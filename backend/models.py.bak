@@ -1,0 +1,82 @@
+# models.py - создайте этот файл заново, напечатайте сами
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
+
+# Пишем каждый символ вручную!
+DB_USER = "admin"
+DB_PASS = "password"
+DB_HOST = "localhost"
+DB_PORT = "5432"
+DB_NAME = "video_db"
+
+# Собираем строку по частям
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+print("=" * 50)
+print(f"Пытаемся подключиться к: {DATABASE_URL}")
+print("=" * 50)
+
+# Создаем engine с дополнительными параметрами
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    connect_args={
+        "client_encoding": "utf8",
+        "connect_timeout": 10
+    }
+)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+class Video(Base):
+    __tablename__ = "videos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False, default="Без названия")
+    description = Column(Text, nullable=True)
+    file_path = Column(String(500))
+    hls_playlist_path = Column(String(500), nullable=True)
+    upload_date = Column(DateTime, default=datetime.utcnow)
+    is_processed = Column(Boolean, default=False)
+    views = Column(Integer, default=0)
+    author_id = Column(Integer, nullable=True)
+
+# Пробуем создать таблицы
+try:
+    print("Создание таблиц...")
+    Base.metadata.create_all(bind=engine)
+    print("✅ Таблицы успешно созданы!")
+    
+    # Проверяем
+    from sqlalchemy import inspect
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+    print(f"Таблицы в БД: {tables}")
+    
+except Exception as e:
+    print(f"❌ Ошибка: {e}")
+    print(f"Тип ошибки: {type(e)}")
+    
+    # Пробуем создать таблицу напрямую через сырой SQL
+    try:
+        with engine.connect() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS videos (
+                    id SERIAL PRIMARY KEY,
+                    title VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    file_path VARCHAR(500),
+                    hls_playlist_path VARCHAR(500),
+                    upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_processed BOOLEAN DEFAULT FALSE,
+                    views INTEGER DEFAULT 0,
+                    author_id INTEGER
+                )
+            """)
+            conn.commit()
+            print("✅ Таблица создана через сырой SQL!")
+    except Exception as e2:
+        print(f"❌ И сырой SQL не сработал: {e2}")
