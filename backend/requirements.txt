@@ -6,3 +6,7 @@ redis==5.0.1
 pydantic==2.12.5
 python-multipart==0.0.6
 celery==5.3.4
+eventlet
+python-jose
+passlib
+python-multipart
