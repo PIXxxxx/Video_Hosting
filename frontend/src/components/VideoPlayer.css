@@ -1,0 +1,37 @@
+/* Кастомные стили для Video.js */
+.video-js {
+  width: 100%;
+  height: 100%;
+}
+
+.vjs-big-play-button {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  border: none !important;
+  border-radius: 50% !important;
+  width: 80px !important;
+  height: 80px !important;
+  line-height: 80px !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+.vjs-big-play-button:hover {
+  background-color: #ff4b4b !important;
+}
+
+.vjs-control-bar {
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent) !important;
+}
+
+.vjs-progress-holder {
+  height: 4px !important;
+}
+
+.vjs-play-progress {
+  background-color: #ff4b4b !important;
+}
+
+.vjs-volume-level {
+  background-color: #ff4b4b !important;
+}
