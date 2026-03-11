@@ -15,7 +15,7 @@ interface VideoCardProps {
 }
 
 const VideoCard: React.FC<VideoCardProps> = ({
-  id, title, views, upload_date, author, compact = false,
+  id, title, views, upload_date, author, author_id, compact = false,
   enableHoverPreview = true,        // ← по умолчанию ВКЛЮЧЕНО везде
   file_path
 }) => {
@@ -76,10 +76,15 @@ const VideoCard: React.FC<VideoCardProps> = ({
 
       <div className="video-info">
         <h3>{title}</h3>
-        <p>{author || 'Аноним'}</p>
+        <p>
+        <Link to={`/channel/${author_id}`} className="author-link">
+            {author || 'Аноним'}
+        </Link>
+        </p>
         <p>{views} просмотров • {new Date(upload_date).toLocaleDateString()}</p>
       </div>
     </Link>
+    
   );
 };
 

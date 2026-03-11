@@ -7,7 +7,8 @@ import Register from './components/Register';
 import VideoListPage from './pages/VideoListPage';
 import PrivateRoute from './components/PrivateRoute';
 import './App.css';
-import VideoWatchPage from './pages/VideoWatchPage'; // Добавь импорт
+import VideoWatchPage from './pages/VideoWatchPage';
+import ChannelPage from './pages/ChannelPage';
 
 function AppContent() {
   const { user, logout } = useAuth();
@@ -41,6 +42,7 @@ function AppContent() {
               <UploadForm />
             </PrivateRoute>
           } />
+          <Route path="/channel/:id" element={<ChannelPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/video/:id" element={<VideoWatchPage />} />

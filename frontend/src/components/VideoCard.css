@@ -98,3 +98,13 @@
 .compact .video-info h3 {
   font-size: 14px;
 }
+
+.author-link {
+  color: #065fd4;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.author-link:hover {
+  text-decoration: underline;
+}
