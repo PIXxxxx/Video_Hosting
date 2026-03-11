@@ -1,0 +1,43 @@
+# Виртуальное окружение
+venv/
+env/
+ENV/
+backend/venv/
+backend/env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# База данных
+*.db
+*.sqlite3
+*.sqlite
+
+# Загруженные файлы
+backend/uploads/
+backend/media/
+uploads/
+media/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Логи
+*.log
+
+# Docker
+.dockerignore
+docker-compose*.yml
+Dockerfile
+
+# Node modules
+frontend/node_modules/
+frontend/build/
+frontend/.env

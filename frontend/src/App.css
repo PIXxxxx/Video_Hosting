@@ -109,3 +109,34 @@ button:disabled {
 .video-info a:hover {
   text-decoration: underline;
 }
+
+/* Добавь в конец файла App.css */
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.home-page {
+  text-align: center;
+  padding: 40px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.home-page h2 {
+  margin: 0 0 20px;
+  color: #333;
+}
+
+.home-page a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.home-page a:hover {
+  text-decoration: underline;
+}

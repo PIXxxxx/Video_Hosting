@@ -1,0 +1,44 @@
+-- Показать все таблицы
+.tables
+
+-- Включить красивое отображение
+.headers on
+.mode column
+
+-- Посмотреть пользователей
+SELECT * FROM users;
+
+-- Посмотреть видео
+SELECT * FROM videos;
+
+-- Посмотреть конкретного пользователя
+SELECT id, username, email, created_at FROM users WHERE username = 'test';
+
+-- Посчитать количество пользователей
+SELECT COUNT(*) FROM users;
+
+-- Выйти из SQLite
+.quit
+
+-- Показать структуру таблицы
+.schema users
+
+-- Выключить красивое отображение
+.mode list
+
+-- Включить обратно
+.mode column
+
+-- Показать все базы данных
+.databases
+
+-- Показать все индексы
+.indexes
+
+-- Очистить экран (в Windows может не работать)
+.system cls
+
+-- Выйти
+.exit
+или
+.quit
