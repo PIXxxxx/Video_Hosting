@@ -9,6 +9,7 @@ import PrivateRoute from './components/PrivateRoute';
 import './App.css';
 import VideoWatchPage from './pages/VideoWatchPage';
 import ChannelPage from './pages/ChannelPage';
+import VideoEditPage from './pages/VideoEditPage';
 
 function AppContent() {
   const { user, logout } = useAuth();
@@ -21,7 +22,7 @@ function AppContent() {
             <Link to="/" className="nav-link">Главная</Link>
             {user ? (
               <>
-                <Link to="/upload" className="nav-link">Загрузить</Link> {/* ЭТО ДОБАВИТЬ */}
+                <Link to="/upload" className="nav-link">Загрузить</Link>
                 <span className="user-greeting">Привет, {user.username}!</span>
                 <button onClick={logout} className="nav-button">Выйти</button>
               </>
@@ -29,6 +30,7 @@ function AppContent() {
               <>
                 <Link to="/login" className="nav-link">Вход</Link>
                 <Link to="/register" className="nav-link">Регистрация</Link>
+                
               </>
             )}
           </nav>
@@ -46,6 +48,7 @@ function AppContent() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/video/:id" element={<VideoWatchPage />} />
+          <Route path="/video/:id/edit" element={<PrivateRoute><VideoEditPage /></PrivateRoute>} />
         </Routes>
       </main>
     </div>

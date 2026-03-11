@@ -15,6 +15,8 @@ interface Video {
 
   file_path?: string;
   hls_playlist_path?: string | null;
+  thumbnail?: string;
+  
 }
 
 const VideoListPage: React.FC = () => {
@@ -82,8 +84,9 @@ const VideoListPage: React.FC = () => {
                 upload_date={video.upload_date}
                 author_id={video.author_id}
                 author={video.author}
-                enableHoverPreview={true}           // ← ВКЛЮЧАЕМ hover
+                enableHoverPreview={true}
                 file_path={video.file_path}
+                thumbnail={video.thumbnail}
                 />
             ))}
         </div>

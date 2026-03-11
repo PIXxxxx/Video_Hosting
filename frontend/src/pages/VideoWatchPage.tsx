@@ -4,6 +4,8 @@ import axios from 'axios';
 import VideoCard from '../components/VideoCard';
 import Hls from 'hls.js';
 import './VideoWatchPage.css';
+import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 interface Video {
   id: number;
@@ -16,6 +18,7 @@ interface Video {
   is_processed: boolean;
   hls_playlist_path?: string | null;
   file_path?: string;
+  thumbnail?: string;
   
 }
 
@@ -27,7 +30,8 @@ const VideoWatchPage: React.FC = () => {
   const [error, setError] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
-
+  const auth = useAuth();
+  const currentUser = auth.user;
   // Загрузка видео + рекомендации
   useEffect(() => {
     const fetchVideo = async () => {
@@ -144,6 +148,17 @@ useEffect(() => {
           <p>{video.views} просмотров • {new Date(video.upload_date).toLocaleDateString()}</p>
           <p>Автор: {video.author || 'Аноним'}</p>
           {video.description && <p className="video-description">{video.description}</p>}
+            
+            {(() => {
+            
+            return currentUser && currentUser.id === video.author_id ? (
+                <div style={{ marginTop: '16px' }}>
+                <Link to={`/video/${video.id}/edit`} className="edit-button">
+                    ✏️ Редактировать видео
+                </Link>
+                </div>
+            ) : null;
+            })()}
         </div>
       </div>
 
@@ -162,6 +177,7 @@ useEffect(() => {
             compact={true}
             enableHoverPreview={true} 
             file_path={relatedVideo.file_path}
+            thumbnail={relatedVideo.thumbnail}
             />
           ))}
         </div>

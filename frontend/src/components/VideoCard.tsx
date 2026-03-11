@@ -10,12 +10,13 @@ interface VideoCardProps {
   author_id: number;
   author?: string;
   compact?: boolean;
-  enableHoverPreview?: boolean;     // ← теперь можно включать везде
+  enableHoverPreview?: boolean;
   file_path?: string;
+  thumbnail?: string;
 }
 
 const VideoCard: React.FC<VideoCardProps> = ({
-  id, title, views, upload_date, author, author_id, compact = false,
+  id, title, views, upload_date, author, author_id, thumbnail, compact = false,
   enableHoverPreview = true,        // ← по умолчанию ВКЛЮЧЕНО везде
   file_path
 }) => {
@@ -40,6 +41,10 @@ const VideoCard: React.FC<VideoCardProps> = ({
     imgRef.current.style.opacity = '1';
   };
 
+const thumbnailSrc = thumbnail 
+  ? (thumbnail.startsWith('http') ? thumbnail : `http://localhost:8000/${thumbnail}`)
+  : `http://localhost:8000/media/thumbnails/${id}.jpg?v=${Date.now()}`;
+
   return (
     <Link 
       to={`/video/${id}`} 
@@ -48,15 +53,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
       onMouseLeave={handleMouseLeave}
     >
       <div className="thumbnail-container">
-        <img 
-          ref={imgRef}
-          src={`http://localhost:8000/media/thumbnails/${id}.jpg`}
-          alt={title}
-          className="thumbnail"
-          onError={(e) => { 
-            e.currentTarget.src = 'https://via.placeholder.com/320x180/222/fff?text=Нет+превью'; 
-          }}
-        />
+        <img
+        ref={imgRef}
+        src={thumbnailSrc}
+        alt={title}
+        className="thumbnail"
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }} // ← принудительно видно
+        onError={(e) => {
+            console.log('Ошибка загрузки превью:', e); // ← для дебага в консоли
+            e.currentTarget.src = 'https://via.placeholder.com/320x180/222/fff?text=Нет+превью';
+        }}
+/>
 
         {previewSrc && (
           <video

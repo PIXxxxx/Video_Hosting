@@ -9,7 +9,8 @@ const UploadForm = () => {
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [uploadedVideo, setUploadedVideo] = useState<{ id: number; title: string } | null>(null);
-    
+    const [description, setDescription] = useState('');
+    const [tags, setTags] = useState('');
     const { user } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -27,6 +28,8 @@ const UploadForm = () => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('title', title);
+        formData.append('description', description);
+        formData.append('tags', tags);
 
         try {
             const response = await axios.post('http://localhost:8000/api/upload/', formData, {
@@ -70,6 +73,20 @@ const UploadForm = () => {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     disabled={uploading}
+                />
+
+                                <textarea
+                placeholder="Описание видео (можно использовать ссылки, тайм-коды и т.д.)"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                rows={6}
+                />
+
+                <input
+                type="text"
+                placeholder="Теги через запятую (python, fastapi, видеоурок)"
+                value={tags}
+                onChange={e => setTags(e.target.value)}
                 />
                 
                 <input
