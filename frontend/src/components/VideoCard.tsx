@@ -84,9 +84,13 @@ const thumbnailSrc = thumbnail
       <div className="video-info">
         <h3>{title}</h3>
         <p>
-        <Link to={`/channel/${author_id}`} className="author-link">
+          <Link 
+            to={`/channel/${author_id}`} 
+            className="author-link"
+            onClick={(e) => e.stopPropagation()}
+          >
             {author || 'Аноним'}
-        </Link>
+          </Link>
         </p>
         <p>{views} просмотров • {new Date(upload_date).toLocaleDateString()}</p>
       </div>

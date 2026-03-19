@@ -40,4 +40,10 @@ Dockerfile
 # Node modules
 frontend/node_modules/
 frontend/build/
-frontend/.env
+frontend/.envnode_modules/
+package-lock.json
+frontend/node_modules/
+node_modules/
+node_modules/
+frontend/node_modules/
+package-lock.json

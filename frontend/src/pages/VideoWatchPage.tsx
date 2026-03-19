@@ -18,7 +18,7 @@ interface Video {
   is_processed: boolean;
   hls_playlist_path?: string | null;
   file_path?: string;
-  thumbnail?: string;
+  thumbnail?: string; 
   
 }
 

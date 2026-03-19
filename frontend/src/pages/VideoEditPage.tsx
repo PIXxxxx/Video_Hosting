@@ -9,6 +9,7 @@ interface Video {
   tags?: string;
   thumbnail?: string;
   custom_thumbnail_path?: string;
+  is_private?: boolean;
 }
 
 const VideoEditPage: React.FC = () => {
@@ -18,6 +19,7 @@ const VideoEditPage: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,6 +33,7 @@ const VideoEditPage: React.FC = () => {
         setTitle(response.data.title || '');
         setDescription(response.data.description || '');
         setTags(response.data.tags || '');
+        setIsPrivate(response.data.is_private || false);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching video:', error);
@@ -50,12 +53,28 @@ const VideoEditPage: React.FC = () => {
       await axios.put(`http://localhost:8000/api/video/${id}/metadata`, {
         title,
         description,
-        tags
+        tags,
+        is_private: isPrivate
       });
       setMessage('✅ Изменения сохранены');
     } catch (error) {
       console.error('Error saving video:', error);
       setMessage('❌ Ошибка при сохранении');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('❗ ВНИМАНИЕ! Видео и все файлы будут удалены НАВСЕГДА. Продолжить?')) return;
+    
+    setSaving(true);
+    try {
+      await axios.delete(`http://localhost:8000/api/video/${id}`);
+      setMessage('✅ Видео удалено');
+      setTimeout(() => navigate('/'), 1500);
+    } catch (error) {
+      setMessage('❌ Ошибка удаления');
     } finally {
       setSaving(false);
     }
@@ -124,6 +143,31 @@ const VideoEditPage: React.FC = () => {
             disabled={saving}
           />
         </div>
+
+        <div className="form-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1em' }}>
+            <input
+              type="checkbox"
+              checked={isPrivate}
+              onChange={e => setIsPrivate(e.target.checked)}
+              disabled={saving}
+            />
+            <span>Приватное видео (доступно только по прямой ссылке)</span>
+          </label>
+        </div>
+
+        <button onClick={handleSave} disabled={saving} className="save-button">
+          {saving ? 'Сохранение...' : 'Сохранить изменения'}
+        </button>
+
+        {/* Кнопка удаления */}
+        <button 
+          onClick={handleDelete} 
+          disabled={saving}
+          style={{ background: '#d32f2f', color: 'white', marginTop: '20px' }}
+        >
+          🗑️ Удалить видео навсегда
+        </button>
 
         <div className="form-group">
           <label>Описание</label>

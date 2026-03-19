@@ -2,3 +2,6 @@
 Терминал 2: Из папки backend uvicorn main:app --reload
 Терминал 3: Из папки backend celery -A celery_app worker --loglevel=info --pool=eventlet
 Терминал 4: Из папки frontend  npm start
+
+cd frontend
+(venv) PS C:\Users\Maksim\Desktop\VideoH\frontend> npm install video.js @types/video.js
