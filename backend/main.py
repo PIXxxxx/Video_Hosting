@@ -440,3 +440,33 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
 
+@app.get("/api/search")
+def search(
+    q: str = Query(..., min_length=1),
+    db: Session = Depends(get_db)
+):
+    """Поиск по названию видео и имени автора"""
+    query = f"%{q}%"
+    
+    videos = db.query(models.Video).join(models.User).filter(
+        models.Video.title.ilike(query) | 
+        models.User.username.ilike(query)
+    ).order_by(models.Video.upload_date.desc()).limit(15).all()
+    
+    result = []
+    for v in videos:
+        thumbnail_url = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
+        if v.custom_thumbnail_path:
+            thumbnail_url = f"http://localhost:8000/media/{v.custom_thumbnail_path}"
+        
+        result.append({
+            "id": v.id,
+            "title": v.title,
+            "author": v.author.username,
+            "author_id": v.author_id,
+            "thumbnail": thumbnail_url,
+            "views": v.views,
+            "upload_date": v.upload_date.isoformat()
+        })
+    
+    return result

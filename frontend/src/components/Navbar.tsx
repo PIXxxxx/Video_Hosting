@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import './Navbar.css';
+import SearchBar from './SearchBar';
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -13,6 +14,7 @@ const Navbar: React.FC = () => {
         </a>
         
         <div className="nav-menu">
+          <SearchBar />
           {isAuthenticated ? (
             <>
               <a href="/upload" className="nav-link">Загрузить видео</a>

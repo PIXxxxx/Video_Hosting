@@ -1,7 +1,10 @@
 .navbar {
-  background-color: #282c34;
-  padding: 1rem 0;
-  color: white;
+  background: #141414;
+  padding: 15px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid #333;
 }
 
 .nav-container {
@@ -9,21 +12,24 @@
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 }
 
 .nav-logo {
+  font-size: 24px;
+  font-weight: bold;
   color: white;
   text-decoration: none;
-  font-size: 1.5rem;
-  font-weight: bold;
 }
 
 .nav-menu {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 15px;
+  flex: 1;
+  justify-content: flex-end;
+  margin-left: 20px;
 }
 
 .nav-link {
