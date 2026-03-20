@@ -6,6 +6,7 @@ import Hls from 'hls.js';
 import './VideoWatchPage.css';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import CommentSection from '../components/CommentSection';
 
 interface Video {
   id: number;
@@ -32,6 +33,26 @@ const VideoWatchPage: React.FC = () => {
   const hlsRef = useRef<Hls | null>(null);
   const auth = useAuth();
   const currentUser = auth.user;
+  const [likes, setLikes] = useState(0);
+  const [dislikes, setDislikes] = useState(0);
+  const [userLikeStatus, setUserLikeStatus] = useState<boolean | null>(null); // null = не голосовал, true = лайк, false = дизлайк
+
+  const toggleLike = async (isLike: boolean) => {
+    try {
+      await axios.post(`http://localhost:8000/api/video/${id}/like`, { is_like: isLike });
+      
+      // Обновляем счётчики
+      const res = await axios.get(`http://localhost:8000/api/video/${id}/likes`);
+      setLikes(res.data.likes);
+      setDislikes(res.data.dislikes);
+
+      // Обновляем статус пользователя (чтобы подсветить кнопку)
+      setUserLikeStatus(isLike);
+    } catch (err) {
+      console.error('Ошибка при лайке:', err);
+    }
+  };
+  
   // Загрузка видео + рекомендации
   useEffect(() => {
     const fetchVideo = async () => {
@@ -74,10 +95,10 @@ useEffect(() => {
     if (Hls.isSupported()) {
       const hls = new Hls({
         debug: false,
-        // ←←← ЭТИ НАСТРОЙКИ УБИРАЮТ ЗАВИСАНИЯ НА СТАРТЕ
-        maxBufferLength: 30,          // сколько секунд буферизировать
+
+        maxBufferLength: 30,
         maxMaxBufferLength: 60,
-        maxBufferSize: 60 * 1024 * 1024, // 60 МБ
+        maxBufferSize: 60 * 1024 * 1024,
         backBufferLength: 90,
         lowLatencyMode: false,
         fragLoadingMaxRetry: 6,
@@ -93,7 +114,6 @@ useEffect(() => {
         videoElement.play().catch(() => {});
       });
 
-      // ←←← ИСПРАВЛЕНИЕ: падаем на MP4 ТОЛЬКО при fatal ошибке
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (data.fatal) {
           console.error('❌ Критическая HLS ошибка → переключаемся на MP4', data);
@@ -105,7 +125,6 @@ useEffect(() => {
           }
         } else {
           console.warn('⚠️ Некритичная ошибка HLS (восстанавливается автоматически):', data.details);
-          // bufferStalledError теперь просто предупреждение, видео продолжит
         }
       });
     } 
@@ -148,7 +167,20 @@ useEffect(() => {
           <p>{video.views} просмотров • {new Date(video.upload_date).toLocaleDateString()}</p>
           <p>Автор: {video.author || 'Аноним'}</p>
           {video.description && <p className="video-description">{video.description}</p>}
-            
+            <div className="like-buttons">
+            <button 
+              className={`like-btn ${userLikeStatus === true ? 'active' : ''}`}
+              onClick={() => toggleLike(true)}
+            >
+              👍 {likes}
+            </button>
+            <button 
+              className={`like-btn ${userLikeStatus === false ? 'active' : ''}`}
+              onClick={() => toggleLike(false)}
+            >
+              👎 {dislikes}
+            </button>
+          </div>
             {(() => {
             
             return currentUser && currentUser.id === video.author_id ? (
@@ -161,7 +193,7 @@ useEffect(() => {
             })()}
         </div>
       </div>
-
+            <CommentSection videoId={Number(id)} />
             <div className="related-videos">
         <h2>Рекомендации</h2>
         <div className="related-videos-list">
@@ -182,6 +214,7 @@ useEffect(() => {
           ))}
         </div>
       </div>
+      
     </div>
   );
 };

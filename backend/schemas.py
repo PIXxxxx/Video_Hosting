@@ -1,6 +1,6 @@
 # schemas.py
 from pydantic import BaseModel, EmailStr, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 # ─── Пользователь ────────────────────────────────────────
@@ -52,9 +52,28 @@ class VideoOut(VideoBase):
     is_processed: bool
     views: int
     author_id: Optional[int] = None
-    author: Optional[UserOut] = None      # ← теперь правильно, вложенный UserOut
+    author: Optional[UserOut] = None
     tags: Optional[str] = None
     custom_thumbnail_path: Optional[str] = None
     is_private: bool = False
 
     model_config = ConfigDict(from_attributes=True)
+
+class LikeBase(BaseModel):
+    is_like: bool
+
+class CommentBase(BaseModel):
+    text: str
+    parent_id: Optional[int] = None
+
+class CommentOut(CommentBase):
+    id: int
+    user_id: int
+    username: str
+    created_at: datetime
+    replies: List['CommentOut'] = []
+
+    class Config:
+        from_attributes = True
+
+CommentOut.update_forward_refs()

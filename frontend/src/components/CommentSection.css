@@ -1,0 +1,7 @@
+.comments-section { margin-top: 30px; }
+.comment-form { display: flex; gap: 10px; margin-bottom: 20px; }
+.comment-form textarea { flex: 1; height: 80px; }
+.comments-list { display: flex; flex-direction: column; gap: 15px; }
+.comment { background: #1f1f1f; padding: 15px; border-radius: 8px; }
+.reply { margin-left: 40px; background: #2a2a2a; padding: 10px; border-radius: 6px; margin-top: 8px; }
+.reply-btn { font-size: 13px; color: #007bff; background: none; border: none; cursor: pointer; }

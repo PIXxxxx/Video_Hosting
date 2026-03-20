@@ -19,7 +19,6 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="App">
-          {/* ← Только один Navbar — он уже содержит всё нужное */}
           <Navbar />
 
           <main className="main-content">

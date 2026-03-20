@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Foreign
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
+import models
 
 class User(Base):
     __tablename__ = "users"
@@ -37,4 +38,26 @@ class Video(Base):
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     author = relationship("User", back_populates="videos")
 
-    
+class Like(models.Base):
+    __tablename__ = "likes"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    video_id = Column(Integer, ForeignKey("videos.id"))
+    is_like = Column(Boolean, default=True)
+
+    user = relationship("User")
+    video = relationship("Video")
+
+
+class Comment(models.Base):
+    __tablename__ = "comments"
+    id = Column(Integer, primary_key=True, index=True)
+    video_id = Column(Integer, ForeignKey("videos.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    text = Column(Text, nullable=False)
+    parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+    video = relationship("Video")
+    replies = relationship("Comment", backref="parent", remote_side=[id])

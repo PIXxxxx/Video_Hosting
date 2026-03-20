@@ -470,3 +470,80 @@ def search(
         })
     
     return result
+
+@app.post("/api/video/{video_id}/like")
+def toggle_like(
+    video_id: int,
+    like_data: schemas.LikeBase,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    like = db.query(models.Like).filter(
+        models.Like.video_id == video_id,
+        models.Like.user_id == current_user.id
+    ).first()
+
+    if like:
+        if like.is_like == like_data.is_like:
+            db.delete(like)
+        else:
+            like.is_like = like_data.is_like
+    else:
+        like = models.Like(video_id=video_id, user_id=current_user.id, is_like=like_data.is_like)
+        db.add(like)
+    
+    db.commit()
+    return {"message": "Лайк обновлён"}
+
+
+@app.get("/api/video/{video_id}/likes")
+def get_likes(video_id: int, db: Session = Depends(get_db)):
+    likes = db.query(models.Like).filter(models.Like.video_id == video_id).all()
+    like_count = sum(1 for l in likes if l.is_like)
+    dislike_count = len(likes) - like_count
+    return {"likes": like_count, "dislikes": dislike_count}
+
+
+# === КОММЕНТАРИИ ===
+@app.get("/api/video/{video_id}/comments")
+def get_comments(video_id: int, db: Session = Depends(get_db)):
+    comments = db.query(models.Comment).filter(
+        models.Comment.video_id == video_id,
+        models.Comment.parent_id == None
+    ).order_by(models.Comment.created_at.desc()).all()
+    
+    return [
+        {
+            "id": c.id,
+            "text": c.text,
+            "username": c.user.username,
+            "created_at": c.created_at.isoformat(),
+            "replies": [
+                {
+                    "id": r.id,
+                    "text": r.text,
+                    "username": r.user.username,
+                    "created_at": r.created_at.isoformat()
+                } for r in (c.replies or [])
+            ]
+        } for c in comments
+    ]
+
+
+@app.post("/api/video/{video_id}/comments")
+def add_comment(
+    video_id: int,
+    comment: schemas.CommentBase,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    new_comment = models.Comment(
+        video_id=video_id,
+        user_id=current_user.id,
+        text=comment.text,
+        parent_id=comment.parent_id
+    )
+    db.add(new_comment)
+    db.commit()
+    db.refresh(new_comment)
+    return {"message": "Комментарий добавлен", "id": new_comment.id}
