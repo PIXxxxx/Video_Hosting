@@ -507,27 +507,46 @@ def get_likes(video_id: int, db: Session = Depends(get_db)):
 # === КОММЕНТАРИИ ===
 @app.get("/api/video/{video_id}/comments")
 def get_comments(video_id: int, db: Session = Depends(get_db)):
-    comments = db.query(models.Comment).filter(
-        models.Comment.video_id == video_id,
-        models.Comment.parent_id == None
-    ).order_by(models.Comment.created_at.desc()).all()
-    
-    return [
-        {
-            "id": c.id,
-            "text": c.text,
-            "username": c.user.username,
-            "created_at": c.created_at.isoformat(),
-            "replies": [
-                {
-                    "id": r.id,
-                    "text": r.text,
-                    "username": r.user.username,
-                    "created_at": r.created_at.isoformat()
-                } for r in (c.replies or [])
-            ]
-        } for c in comments
-    ]
+    # Находим все корневые комментарии
+    root_comments = (
+        db.query(models.Comment)
+        .filter(
+            models.Comment.video_id == video_id,
+            models.Comment.parent_id.is_(None)
+        )
+        .order_by(models.Comment.created_at.desc())
+        .all()
+    )
+
+    result = []
+    for comment in root_comments:
+        # Подгружаем все ответы на этот комментарий
+        replies_query = (
+            db.query(models.Comment)
+            .filter(models.Comment.parent_id == comment.id)
+            .order_by(models.Comment.created_at.asc())
+            .all()
+        )
+
+        replies = [
+            {
+                "id": r.id,
+                "text": r.text,
+                "username": r.user.username,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in replies_query
+        ]
+
+        result.append({
+            "id": comment.id,
+            "text": comment.text,
+            "username": comment.user.username,
+            "created_at": comment.created_at.isoformat(),
+            "replies": replies
+        })
+
+    return result
 
 
 @app.post("/api/video/{video_id}/comments")
