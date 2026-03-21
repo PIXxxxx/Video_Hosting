@@ -10,6 +10,8 @@ import Login from './components/Login';
 import Register from './components/Register';
 import ChannelPage from './pages/ChannelPage';
 import PrivateRoute from './components/PrivateRoute';
+import HistoryPage from './pages/HistoryPage'
+import SubscriptionsPage from './pages/SubscriptionsPage'
 
 import { AuthProvider } from './context/AuthContext';
 import './App.css';
@@ -30,6 +32,8 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/channel/:id" element={<ChannelPage />} />
+              <Route path="/history" element={<HistoryPage />} />
+              <Route path="/subscriptions" element={<SubscriptionsPage />} />
             </Routes>
           </main>
         </div>

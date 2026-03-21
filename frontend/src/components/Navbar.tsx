@@ -1,39 +1,80 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import './Navbar.css';
 import SearchBar from './SearchBar';
+import './Navbar.css';
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Сдвиг контента вправо (как на YouTube)
+  useEffect(() => {
+    if (menuOpen) {
+      document.body.classList.add('menu-open');
+    } else {
+      document.body.classList.remove('menu-open');
+    }
+    return () => document.body.classList.remove('menu-open');
+  }, [menuOpen]);
+
+  const toggleMenu = () => setMenuOpen(!menuOpen);
+
+  const goToMyChannel = () => {
+    if (user) navigate(`/channel/${user.id}`);
+    setMenuOpen(false);
+  };
 
   return (
-    <nav className="navbar">
-      <div className="nav-container">
-        <a href="/" className="nav-logo">
-          VideoHosting
-        </a>
-        
-        <div className="nav-menu">
-          <SearchBar />
-          {isAuthenticated ? (
-            <>
-              <a href="/upload" className="nav-link">Загрузить видео</a>
-              <div className="user-menu">
-                <span className="username">{user?.username}</span>
-                <button onClick={logout} className="logout-btn">
-                  Выйти
-                </button>
+    <>
+      <nav className="navbar">
+        <div className="nav-container">
+          <button className="hamburger" onClick={toggleMenu}>☰</button>
+
+          <Link to="/" className="nav-logo">VideoHosting</Link>
+
+          <div className="nav-menu">
+            <SearchBar />
+            <a href="/upload" className="nav-link">Загрузить видео</a>
+
+            {isAuthenticated && user ? (
+              <div className="user-section" onClick={goToMyChannel}>
+                <img 
+                  src={`https://ui-avatars.com/api/?name=${user.username}&background=random`} 
+                  alt={user.username}
+                  className="avatar"
+                />
+                <span className="username">{user.username}</span>
               </div>
-            </>
-          ) : (
-            <>
-              <a href="/login" className="nav-link">Вход</a>
-              <a href="/register" className="nav-link register-link">Регистрация</a>
-            </>
-          )}
+            ) : (
+              <>
+                <Link to="/login" className="nav-link">Вход</Link>
+                <Link to="/register" className="nav-link">Регистрация</Link>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* Боковое меню */}
+      {menuOpen && (
+        <div className="sidebar" onClick={() => setMenuOpen(false)}>
+          <div className="sidebar-content" onClick={e => e.stopPropagation()}>
+            <div className="sidebar-header">
+              <h3>Меню</h3>
+              <button onClick={() => setMenuOpen(false)}>✕</button>
+            </div>
+
+            <button onClick={goToMyChannel} className="sidebar-item">📁 Мои видео</button>
+            <Link to="/history" className="sidebar-item" onClick={() => setMenuOpen(false)}>⏱ История просмотров</Link>
+            <Link to="/subscriptions" className="sidebar-item" onClick={() => setMenuOpen(false)}>⭐ Подписки</Link>
+
+            <button onClick={() => { logout(); setMenuOpen(false); }} className="sidebar-item logout">Выйти</button>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

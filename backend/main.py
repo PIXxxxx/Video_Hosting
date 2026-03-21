@@ -3,13 +3,13 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 import shutil
 import os
 import uuid
 from datetime import timedelta
 from typing import List, Optional
-
+from datetime import datetime  
 import models
 from database import engine, get_db, init_db
 import schemas
@@ -216,10 +216,28 @@ def get_video(
 
         video.views += 1
         db.commit()
-        
+
+        # Добавляем/обновляем запись в истории просмотров (только для авторизованных)
+        if current_user:
+            existing = db.query(models.WatchHistory).filter(
+                models.WatchHistory.user_id == current_user.id,
+                models.WatchHistory.video_id == video_id
+            ).first()
+
+            if existing:
+                existing.watched_at = datetime.utcnow()
+            else:
+                history_entry = models.WatchHistory(
+                    user_id=current_user.id,
+                    video_id=video_id
+                )
+                db.add(history_entry)
+
+            db.commit()  # коммитим изменения в историю
+
         # Формируем URL миниатюры
         thumbnail_url = f"http://localhost:8000/media/thumbnails/{video.id}.jpg"
-        
+
         video_data = {
             "id": video.id,
             "title": video.title,
@@ -234,7 +252,7 @@ def get_video(
             "thumbnail": thumbnail_url,
             "is_private": video.is_private
         }
-        
+
         print(f"✅ Видео {video_id} найдено: {video.title}")
         return video_data
         
@@ -613,3 +631,82 @@ def get_subscription_status(
         "subscribed": is_subscribed,
         "subscribers_count": subscribers_count
     }
+
+# ========== ЛИЧНЫЙ КАБИНЕТ (для меню) ==========
+
+@app.get("/api/me/videos")
+def get_my_videos(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
+    """Мои видео"""
+    videos = db.query(models.Video).filter(
+        models.Video.author_id == current_user.id
+    ).order_by(models.Video.upload_date.desc()).all()
+    
+    return [
+        {
+            "id": v.id,
+            "title": v.title,
+            "description": v.description or "",
+            "views": v.views,
+            "upload_date": v.upload_date.isoformat(),
+            "thumbnail": f"http://localhost:8000/media/thumbnails/{v.id}.jpg",
+            "is_processed": v.is_processed
+        }
+        for v in videos
+    ]
+
+
+@app.get("/api/me/watch-history", response_model=List[schemas.WatchHistoryOut])
+def get_watch_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
+    history = (
+        db.query(models.WatchHistory)
+        .options(joinedload(models.WatchHistory.video))
+        .filter(models.WatchHistory.user_id == current_user.id)
+        .order_by(models.WatchHistory.watched_at.desc())
+        .limit(50)
+        .all()
+    )
+    
+    return [
+        schemas.WatchHistoryOut(
+            id=h.video.id,
+            title=h.video.title,
+            thumbnail=f"http://localhost:8000/media/thumbnails/{h.video.id}.jpg",
+            watched_at=h.watched_at,
+            views=h.video.views
+        )
+        for h in history
+    ]
+
+
+@app.get("/api/me/subscriptions/feed", response_model=List[schemas.SubscriptionFeedItem])
+def get_subscriptions_feed(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
+    videos = (
+        db.query(models.Video)
+        .join(models.Subscription, models.Video.author_id == models.Subscription.author_id)
+        .filter(models.Subscription.subscriber_id == current_user.id)
+        .order_by(models.Video.upload_date.desc())
+        .limit(30)
+        .all()
+    )
+    
+    return [
+        schemas.SubscriptionFeedItem(
+            id=v.id,
+            title=v.title,
+            author=v.author.username,
+            author_id=v.author_id,
+            thumbnail=f"http://localhost:8000/media/thumbnails/{v.id}.jpg",
+            upload_date=v.upload_date,
+            views=v.views
+        )
+        for v in videos
+    ]

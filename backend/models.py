@@ -14,9 +14,11 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Добавляем поле для аватарки (опционально)
-    # avatar_url = Column(String(500), nullable=True)  # ← новая строка
+    watch_history = relationship(
+        "WatchHistory",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
     
     videos = relationship("Video", back_populates="author", cascade="all, delete-orphan")
 
@@ -74,3 +76,13 @@ class Subscription(Base):
     __table_args__ = (
         UniqueConstraint('subscriber_id', 'author_id', name='unique_subscription'),
     )
+
+class WatchHistory(Base):
+    __tablename__ = "watch_history"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    video_id = Column(Integer, ForeignKey("videos.id"))
+    watched_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="watch_history")
+    video = relationship("Video")

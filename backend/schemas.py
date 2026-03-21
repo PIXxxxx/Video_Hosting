@@ -86,3 +86,24 @@ class SubscriptionOut(BaseModel):
 class SubscribeResponse(BaseModel):
     message: str
     subscribed: bool
+
+class WatchHistoryOut(BaseModel):
+    id: int
+    title: str
+    thumbnail: str
+    watched_at: datetime
+    views: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SubscriptionFeedItem(BaseModel):
+    id: int
+    title: str
+    author: str
+    author_id: int
+    thumbnail: str
+    upload_date: datetime
+    views: int
+
+    model_config = ConfigDict(from_attributes=True)
