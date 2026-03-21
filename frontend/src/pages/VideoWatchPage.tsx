@@ -4,6 +4,7 @@ import axios from 'axios';
 import Hls from 'hls.js';
 import VideoCard from '../components/VideoCard';
 import CommentSection from '../components/CommentSection';
+import SubscribeButton from '../components/SubscribeButton'; // ← добавлен импорт
 import { useAuth } from '../context/AuthContext';
 import './VideoWatchPage.css';
 
@@ -36,7 +37,6 @@ const VideoWatchPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
-  // Загрузка видео + рекомендаций + лайков
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -63,13 +63,11 @@ const VideoWatchPage: React.FC = () => {
     if (id) fetchData();
   }, [id]);
 
-  // Управление плеером (HLS / MP4)
   useEffect(() => {
     if (!video || !videoRef.current) return;
 
     const videoEl = videoRef.current;
 
-    // Очистка предыдущего плеера
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
@@ -123,7 +121,6 @@ const VideoWatchPage: React.FC = () => {
     };
   }, [video]);
 
-  // Переключение лайка/дизлайка
   const toggleLike = async (isLike: boolean) => {
     try {
       await axios.post(`http://localhost:8000/api/video/${id}/like`, { is_like: isLike });
@@ -142,7 +139,6 @@ const VideoWatchPage: React.FC = () => {
   return (
     <div className="video-watch-page">
       <div className="main-layout">
-        {/* Левая часть: видео + описание + лайки + комментарии */}
         <div className="left-column">
           <div className="video-player-wrapper">
             <video
@@ -160,7 +156,15 @@ const VideoWatchPage: React.FC = () => {
               <span>•</span>
               <span>{new Date(video.upload_date).toLocaleDateString('ru-RU')}</span>
             </div>
-            <p className="author">Автор: {video.author || 'Аноним'}</p>
+
+            <div className="author-block">
+              <p className="author">Автор: {video.author || 'Аноним'}</p>
+
+              {/* Кнопка подписки под видео */}
+              {video.author_id && (
+                <SubscribeButton authorId={video.author_id} />
+              )}
+            </div>
 
             {video.description && (
               <p className="description">{video.description}</p>
@@ -188,11 +192,9 @@ const VideoWatchPage: React.FC = () => {
             )}
           </div>
 
-          {/* Комментарии */}
           <CommentSection videoId={Number(id)} />
         </div>
 
-        {/* Правая колонка: рекомендации */}
         <aside className="right-column">
           <div className="related-section">
             <h2>Рекомендации</h2>

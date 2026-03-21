@@ -77,3 +77,12 @@ class CommentOut(CommentBase):
         from_attributes = True
 
 CommentOut.update_forward_refs()
+
+class SubscriptionOut(BaseModel):
+    author_id: int
+    author_username: str
+    subscribers_count: int
+
+class SubscribeResponse(BaseModel):
+    message: str
+    subscribed: bool

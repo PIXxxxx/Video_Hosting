@@ -1,5 +1,5 @@
 # models.py
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -61,3 +61,16 @@ class Comment(models.Base):
     user = relationship("User")
     video = relationship("Video")
     replies = relationship("Comment", backref="parent", remote_side=[id])
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    id = Column(Integer, primary_key=True, index=True)
+    subscriber_id = Column(Integer, ForeignKey("users.id"))
+    author_id = Column(Integer, ForeignKey("users.id"))
+
+    subscriber = relationship("User", foreign_keys=[subscriber_id])
+    author = relationship("User", foreign_keys=[author_id])
+
+    __table_args__ = (
+        UniqueConstraint('subscriber_id', 'author_id', name='unique_subscription'),
+    )

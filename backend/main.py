@@ -566,3 +566,50 @@ def add_comment(
     db.commit()
     db.refresh(new_comment)
     return {"message": "Комментарий добавлен", "id": new_comment.id}
+
+@app.post("/api/subscribe/{author_id}")
+def toggle_subscription(
+    author_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.id == author_id:
+        raise HTTPException(400, "Нельзя подписаться на самого себя")
+
+    sub = db.query(models.Subscription).filter(
+        models.Subscription.subscriber_id == current_user.id,
+        models.Subscription.author_id == author_id
+    ).first()
+
+    if sub:
+        db.delete(sub)
+        db.commit()
+        return {"message": "Вы отписались", "subscribed": False}
+    else:
+        new_sub = models.Subscription(subscriber_id=current_user.id, author_id=author_id)
+        db.add(new_sub)
+        db.commit()
+        return {"message": "Вы подписались", "subscribed": True}
+
+
+@app.get("/api/subscription/status/{author_id}")
+def get_subscription_status(
+    author_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user_optional), 
+    db: Session = Depends(get_db)
+):
+    subscribers_count = db.query(models.Subscription).filter(
+        models.Subscription.author_id == author_id
+    ).count()
+
+    is_subscribed = False
+    if current_user:
+        is_subscribed = db.query(models.Subscription).filter(
+            models.Subscription.subscriber_id == current_user.id,
+            models.Subscription.author_id == author_id
+        ).first() is not None
+
+    return {
+        "subscribed": is_subscribed,
+        "subscribers_count": subscribers_count
+    }

@@ -113,3 +113,39 @@ async def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Неактивный пользователь")
     return current_user
+
+# Опциональный текущий пользователь (возвращает None, если токена нет или он недействителен)
+async def get_current_active_user_optional(
+    token: Optional[str] = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+) -> Optional[models.User]:
+    if token is None:
+        return None
+    
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Не удалось подтвердить учетные данные",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        token_data = schemas.TokenData(username=username)
+    except JWTError:
+        return None
+    
+    user = db.query(models.User).filter(
+        (models.User.username == token_data.username) | 
+        (models.User.email == token_data.username)
+    ).first()
+    
+    if user is None:
+        return None
+    
+    if not user.is_active:
+        return None  # или можно raise, но лучше вернуть None для публичных страниц
+    
+    return user

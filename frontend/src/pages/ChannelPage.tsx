@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import VideoCard from '../components/VideoCard';  // предполагаю, что путь правильный
+import VideoCard from '../components/VideoCard';
+import SubscribeButton from '../components/SubscribeButton';
 import './ChannelPage.css';
 
 interface ChannelVideo {
@@ -65,10 +66,13 @@ const ChannelPage: React.FC = () => {
 
         <div className="channel-info">
           <h1>{channel.username}</h1>
+
+          {/* Кнопка подписки — здесь главный автор канала */}
+          <SubscribeButton authorId={channel.id} />
+
           <p className="sub-count">
-            {channel.videos_count} видео • {channel.videos_count} просмотров (пока заглушка)
+            {channel.videos_count} видео
           </p>
-          {/* Позже можно добавить кнопку "Подписаться" */}
         </div>
       </div>
 
