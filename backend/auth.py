@@ -1,4 +1,3 @@
-# auth.py
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -10,8 +9,7 @@ import models
 import schemas
 from database import get_db
 
-# Константы
-SECRET_KEY = "your-secret-key-change-in-production"  # В продакшне меняй!
+SECRET_KEY = "your-secret-key-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -146,6 +144,6 @@ async def get_current_active_user_optional(
         return None
     
     if not user.is_active:
-        return None  # или можно raise, но лучше вернуть None для публичных страниц
+        return None
     
     return user

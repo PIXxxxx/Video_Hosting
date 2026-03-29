@@ -34,9 +34,9 @@ class VideoBase(BaseModel):
     description: Optional[str] = ""
 
 class VideoCreate(VideoBase):
-    title: str                    # обязательно
+    title: str
     description: Optional[str] = ""
-    tags: Optional[str] = ""      # теги через запятую
+    tags: Optional[str] = ""
 
 class VideoUpdate(BaseModel):
     title: Optional[str] = None

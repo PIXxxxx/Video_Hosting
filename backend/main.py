@@ -16,18 +16,14 @@ import schemas
 import auth
 from celery_app import process_video_task
 
-# Инициализация БД
 init_db()
 
-# Создаем все необходимые папки
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("media/videos", exist_ok=True)
 os.makedirs("media/thumbnails", exist_ok=True)
 
-# Создаем приложение
 app = FastAPI(title="Video Hosting API")
 
-# CORS для фронтенда - расширенные настройки
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -52,8 +48,6 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 @app.get("/")
 def read_root():
     return {"message": "Video Hosting API is running", "db": "SQLite"}
-
-# ========== АВТОРИЗАЦИЯ ==========
 
 @app.post("/api/register", response_model=schemas.UserOut)
 def register(
@@ -314,13 +308,12 @@ def get_videos_count(db: Session = Depends(get_db)):
 @app.get("/api/channel/{user_id}")
 def get_channel(user_id: int, db: Session = Depends(get_db)):
     """
-    Получить информацию о канале пользователя + его видео (до 20 последних)
+    Получить информацию о канале пользователя + его видео
     """
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    # Получаем последние 20 видео автора
     videos = (
         db.query(models.Video)
         .filter(models.Video.author_id == user_id)
@@ -329,18 +322,22 @@ def get_channel(user_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
-    # Формируем ответ
     video_list = []
     for v in videos:
+        if v.custom_thumbnail_path:
+            thumbnail = f"http://localhost:8000/media/{v.custom_thumbnail_path}"
+        else:
+            thumbnail = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
+
         video_list.append({
             "id": v.id,
             "title": v.title,
             "description": v.description or "",
             "views": v.views,
-            "upload_date": v.upload_date.isoformat(),
+            "upload_date": v.upload_date.isoformat() if v.upload_date else None,
             "author": user.username,
             "author_id": user.id,
-            "thumbnail": f"http://localhost:8000/media/thumbnails/{v.id}.jpg",
+            "thumbnail": thumbnail,   
             "file_path": v.file_path,
             "hls_playlist_path": v.hls_playlist_path,
             "is_processed": v.is_processed,
@@ -350,9 +347,8 @@ def get_channel(user_id: int, db: Session = Depends(get_db)):
         "id": user.id,
         "username": user.username,
         "avatar_url": f"https://ui-avatars.com/api/?name={user.username}&background=random",
-        "videos_count": db.query(models.Video).filter(models.Video.author_id == user_id).count(),
+        "videos_count": len(video_list),
         "videos": video_list,
-        # Можно позже добавить: bio, subscribers_count, joined_date и т.д.
     }
 
 @app.put("/api/video/{video_id}/metadata")
@@ -644,21 +640,28 @@ def get_my_videos(
         models.Video.author_id == current_user.id
     ).order_by(models.Video.upload_date.desc()).all()
     
-    return [
-        {
+    result = []
+    for v in videos:
+        # Правильная логика выбора превью
+        if v.custom_thumbnail_path:
+            thumbnail = f"http://localhost:8000/media/{v.custom_thumbnail_path}"
+        else:
+            thumbnail = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
+        
+        result.append({
             "id": v.id,
             "title": v.title,
             "description": v.description or "",
             "views": v.views,
-            "upload_date": v.upload_date.isoformat(),
-            "thumbnail": f"http://localhost:8000/media/thumbnails/{v.id}.jpg",
+            "upload_date": v.upload_date.isoformat() if v.upload_date else None,
+            "thumbnail": thumbnail,           # ← самое важное
             "is_processed": v.is_processed
-        }
-        for v in videos
-    ]
+        })
+    
+    return result
 
 
-@app.get("/api/me/watch-history", response_model=List[schemas.WatchHistoryOut])
+@app.get("/api/me/watch-history")
 def get_watch_history(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_active_user)
@@ -672,19 +675,29 @@ def get_watch_history(
         .all()
     )
     
-    return [
-        schemas.WatchHistoryOut(
-            id=h.video.id,
-            title=h.video.title,
-            thumbnail=f"http://localhost:8000/media/thumbnails/{h.video.id}.jpg",
-            watched_at=h.watched_at,
-            views=h.video.views
-        )
-        for h in history
-    ]
+    result = []
+    for h in history:
+        video = h.video
+        if not video:
+            continue
+            
+        if video.custom_thumbnail_path:
+            thumbnail = f"http://localhost:8000/media/{video.custom_thumbnail_path}"
+        else:
+            thumbnail = f"http://localhost:8000/media/thumbnails/{video.id}.jpg"
+        
+        result.append({
+            "id": video.id,
+            "title": video.title,
+            "thumbnail": thumbnail,
+            "watched_at": h.watched_at.isoformat(),
+            "views": video.views
+        })
+    
+    return result
 
 
-@app.get("/api/me/subscriptions/feed", response_model=List[schemas.SubscriptionFeedItem])
+@app.get("/api/me/subscriptions/feed")
 def get_subscriptions_feed(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_active_user)
@@ -698,15 +711,21 @@ def get_subscriptions_feed(
         .all()
     )
     
-    return [
-        schemas.SubscriptionFeedItem(
-            id=v.id,
-            title=v.title,
-            author=v.author.username,
-            author_id=v.author_id,
-            thumbnail=f"http://localhost:8000/media/thumbnails/{v.id}.jpg",
-            upload_date=v.upload_date,
-            views=v.views
-        )
-        for v in videos
-    ]
+    result = []
+    for v in videos:
+        if v.custom_thumbnail_path:
+            thumbnail = f"http://localhost:8000/media/{v.custom_thumbnail_path}"
+        else:
+            thumbnail = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
+        
+        result.append({
+            "id": v.id,
+            "title": v.title,
+            "author": v.author.username if v.author else "Неизвестно",
+            "author_id": v.author_id,
+            "thumbnail": thumbnail,
+            "upload_date": v.upload_date.isoformat() if v.upload_date else None,
+            "views": v.views
+        })
+    
+    return result

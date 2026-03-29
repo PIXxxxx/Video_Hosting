@@ -13,7 +13,7 @@ interface ChannelVideo {
   upload_date: string;
   author: string;
   author_id: number;
-  thumbnail: string;
+  thumbnail?: string;
   file_path?: string;
   hls_playlist_path?: string | null;
   is_processed: boolean;
@@ -95,6 +95,7 @@ const ChannelPage: React.FC = () => {
                 author={video.author}
                 file_path={video.file_path}
                 enableHoverPreview={true}
+                thumbnail={video.thumbnail}
               />
             ))}
           </div>

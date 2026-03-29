@@ -4,7 +4,7 @@ import axios from 'axios';
 import Hls from 'hls.js';
 import VideoCard from '../components/VideoCard';
 import CommentSection from '../components/CommentSection';
-import SubscribeButton from '../components/SubscribeButton'; // ← добавлен импорт
+import SubscribeButton from '../components/SubscribeButton';
 import { useAuth } from '../context/AuthContext';
 import './VideoWatchPage.css';
 
