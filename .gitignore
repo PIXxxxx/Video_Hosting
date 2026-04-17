@@ -42,5 +42,7 @@ frontend/node_modules/
 frontend/build/
 frontend/.envnode_modules/
 package-lock.json
+frontend/package-lock.json
+frontend/package.json
 frontend/node_modules/
 node_modules/

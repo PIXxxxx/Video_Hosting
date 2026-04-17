@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "hls.js": "^1.6.15",
+    "plyr": "^3.8.4",
     "videojs-contrib-quality-levels": "^4.1.0",
     "videojs-hls-quality-selector": "^2.0.0"
   },

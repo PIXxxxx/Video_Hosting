@@ -9,7 +9,6 @@ const Navbar: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Сдвиг контента вправо (как на YouTube)
   useEffect(() => {
     if (menuOpen) {
       document.body.classList.add('menu-open');
@@ -63,14 +62,27 @@ const Navbar: React.FC = () => {
           <div className="sidebar-content" onClick={e => e.stopPropagation()}>
             <div className="sidebar-header">
               <h3>Меню</h3>
-              <button onClick={() => setMenuOpen(false)}>✕</button>
+              <button className="close-btn" onClick={() => setMenuOpen(false)}>✕</button>
             </div>
 
-            <button onClick={goToMyChannel} className="sidebar-item">📁 Мои видео</button>
-            <Link to="/history" className="sidebar-item" onClick={() => setMenuOpen(false)}>⏱ История просмотров</Link>
-            <Link to="/subscriptions" className="sidebar-item" onClick={() => setMenuOpen(false)}>⭐ Подписки</Link>
+            <Link to={`/channel/${user?.id}`} className="sidebar-item" onClick={() => setMenuOpen(false)}>
+              📁 Мои видео
+            </Link>
 
-            <button onClick={() => { logout(); setMenuOpen(false); }} className="sidebar-item logout">Выйти</button>
+            <Link to="/history" className="sidebar-item" onClick={() => setMenuOpen(false)}>
+              ⏱ История просмотров
+            </Link>
+
+            <Link to="/subscriptions" className="sidebar-item" onClick={() => setMenuOpen(false)}>
+              ⭐ Подписки
+            </Link>
+
+            <button 
+              onClick={() => { logout(); setMenuOpen(false); }} 
+              className="sidebar-item logout"
+            >
+              Выйти
+            </button>
           </div>
         </div>
       )}

@@ -1,3 +1,4 @@
+// src/components/VideoCard.tsx
 import React, { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import './VideoCard.css';
@@ -16,12 +17,20 @@ interface VideoCardProps {
 }
 
 const VideoCard: React.FC<VideoCardProps> = ({
-  id, title, views, upload_date, author, author_id, thumbnail, compact = false,
-  enableHoverPreview = true,        // ← по умолчанию ВКЛЮЧЕНО везде
-  file_path
+  id,
+  title,
+  views,
+  upload_date,
+  author_id,
+  author,
+  compact = false,
+  enableHoverPreview = true,
+  file_path,
+  thumbnail,
 }) => {
   const imgRef = useRef<HTMLImageElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
   const previewSrc = file_path 
     ? `http://localhost:8000/${file_path.replace(/\\/g, '/')}` 
     : null;
@@ -41,9 +50,9 @@ const VideoCard: React.FC<VideoCardProps> = ({
     imgRef.current.style.opacity = '1';
   };
 
-const thumbnailSrc = thumbnail 
-  ? (thumbnail.startsWith('http') ? thumbnail : `http://localhost:8000/${thumbnail}`)
-  : `http://localhost:8000/media/thumbnails/${id}.jpg?v=${Date.now()}`;
+  const thumbnailSrc = thumbnail 
+    ? (thumbnail.startsWith('http') ? thumbnail : `http://localhost:8000/${thumbnail}`)
+    : `http://localhost:8000/media/thumbnails/${id}.jpg?v=${Date.now()}`;
 
   return (
     <Link 
@@ -54,16 +63,16 @@ const thumbnailSrc = thumbnail
     >
       <div className="thumbnail-container">
         <img
-        ref={imgRef}
-        src={thumbnailSrc}
-        alt={title}
-        className="thumbnail"
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }} // ← принудительно видно
-        onError={(e) => {
-            console.log('Ошибка загрузки превью:', e); // ← для дебага в консоли
+          ref={imgRef}
+          src={thumbnailSrc}
+          alt={title}
+          className="thumbnail"
+          onError={(e) => {
+            console.log(`Ошибка загрузки превью для видео ${id}`);
             e.currentTarget.src = 'https://via.placeholder.com/320x180/222/fff?text=Нет+превью';
-        }}
-/>
+            e.currentTarget.onerror = null;
+          }}
+        />
 
         {previewSrc && (
           <video
@@ -74,7 +83,6 @@ const thumbnailSrc = thumbnail
             loop
             playsInline
             preload="none"
-            style={{ objectFit: 'contain', background: '#000' }}
           />
         )}
 
@@ -87,7 +95,7 @@ const thumbnailSrc = thumbnail
           <Link 
             to={`/channel/${author_id}`} 
             className="author-link"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}   // ← Важно! Останавливаем всплытие
           >
             {author || 'Аноним'}
           </Link>
@@ -95,7 +103,6 @@ const thumbnailSrc = thumbnail
         <p>{views} просмотров • {new Date(upload_date).toLocaleDateString()}</p>
       </div>
     </Link>
-    
   );
 };
 

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// src/components/SearchBar.tsx
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import './SearchBar.css';
@@ -7,6 +8,7 @@ const SearchBar: React.FC = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (query.length < 2) {
@@ -28,8 +30,20 @@ const SearchBar: React.FC = () => {
     return () => clearTimeout(timer);
   }, [query]);
 
+  // Закрываем меню при клике вне поиска
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
-    <div className="search-container">
+    <div className="search-container" ref={searchRef}>
       <input
         type="text"
         placeholder="Поиск видео или автора..."
@@ -39,35 +53,38 @@ const SearchBar: React.FC = () => {
         onFocus={() => query.length >= 2 && setShowResults(true)}
       />
 
-      {showResults && results.length > 0 && (
+      {showResults && (
         <div className="search-results">
-          {results.map(video => (
-            <Link 
-              key={video.id}
-              to={`/video/${video.id}`}
-              className="search-result-item"
-              onClick={() => {
-                setQuery('');
-                setShowResults(false);
-              }}
-            >
-              <img 
-                src={video.thumbnail} 
-                alt={video.title}
-                className="search-thumbnail"
-              />
-              <div className="search-info">
-                <h4>{video.title}</h4>
-                <p>{video.author}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {showResults && results.length === 0 && query.length >= 2 && (
-        <div className="search-results">
-          <p className="no-results">Ничего не найдено</p>
+          {results.length > 0 ? (
+            results.map(video => (
+              <Link 
+                key={video.id}
+                to={`/video/${video.id}`}
+                className="search-result-item"
+                onClick={() => {
+                  setQuery('');
+                  setShowResults(false);
+                }}
+              >
+                <img 
+                  src={video.thumbnail} 
+                  alt={video.title}
+                  className="search-thumbnail"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://via.placeholder.com/80x45/333/fff?text=Нет+фото';
+                  }}
+                />
+                <div className="search-info">
+                  <h4>{video.title}</h4>
+                  <p>{video.author}</p>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="no-results">
+              Ничего не найдено по запросу "{query}"
+            </div>
+          )}
         </div>
       )}
     </div>

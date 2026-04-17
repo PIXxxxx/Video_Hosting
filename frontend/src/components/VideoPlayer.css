@@ -1,37 +1,90 @@
-/* Кастомные стили для Video.js */
-.video-js {
+.custom-video-player {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.video {
   width: 100%;
   height: 100%;
+  display: block;
 }
 
-.vjs-big-play-button {
-  background-color: rgba(0, 0, 0, 0.7) !important;
-  border: none !important;
-  border-radius: 50% !important;
-  width: 80px !important;
-  height: 80px !important;
-  line-height: 80px !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
+.controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+  padding: 10px 15px;
+  z-index: 10;
 }
 
-.vjs-big-play-button:hover {
-  background-color: #ff4b4b !important;
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+  margin-bottom: 10px;
+  cursor: pointer;
 }
 
-.vjs-control-bar {
-  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent) !important;
+.controls-bottom {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  color: white;
 }
 
-.vjs-progress-holder {
-  height: 4px !important;
+.control-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: white;
 }
 
-.vjs-play-progress {
-  background-color: #ff4b4b !important;
+.time {
+  font-size: 14px;
+  min-width: 90px;
 }
 
-.vjs-volume-level {
-  background-color: #ff4b4b !important;
+/* Качество */
+.quality-wrapper {
+  position: relative;
+  margin-left: auto;
+}
+
+.quality-btn {
+  background: rgba(255,255,255,0.1);
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.quality-menu {
+  position: absolute;
+  bottom: 50px;
+  right: 0;
+  background: #1f1f1f;
+  border-radius: 6px;
+  padding: 8px 0;
+  min-width: 130px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+  z-index: 100;
+}
+
+.quality-item {
+  padding: 10px 20px;
+  color: white;
+  cursor: pointer;
+}
+
+.quality-item:hover {
+  background: #007bff;
 }

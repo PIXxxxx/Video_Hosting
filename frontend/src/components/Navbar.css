@@ -1,6 +1,7 @@
+/* Navbar.css */
 .navbar {
   background: #141414;
-  padding: 15px 0;
+  padding: 12px 0;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -8,40 +9,52 @@
 }
 
 .nav-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 15px;
 }
 
+/* Логотип */
 .nav-logo {
   font-size: 24px;
   font-weight: bold;
   color: white;
   text-decoration: none;
+  white-space: nowrap;
 }
 
+/* Основное меню (для больших экранов) */
 .nav-menu {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
   flex: 1;
   justify-content: flex-end;
-  margin-left: 20px;
 }
 
+/* Поиск */
+.search-container {
+  flex: 1;
+  max-width: 520px;
+  margin: 0 20px;
+}
+
+/* Кнопки */
 .nav-link {
   color: white;
   text-decoration: none;
   padding: 8px 16px;
-  border-radius: 4px;
-  transition: background-color 0.3s;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  white-space: nowrap;
 }
 
 .nav-link:hover {
-  background-color: #40464f;
+  background-color: #2a2a2a;
 }
 
 .register-link {
@@ -49,44 +62,52 @@
 }
 
 .register-link:hover {
-  background-color: #0056b3 !important;
+  background-color: #0056b3;
 }
 
-.user-menu {
+/* Секция пользователя */
+.user-section {
   display: flex;
   align-items: center;
-  gap: 15px;
-}
-
-.username {
-  font-weight: bold;
-  color: #61dafb;
-}
-
-.logout-btn {
-  background-color: transparent;
-  color: white;
-  border: 1px solid #dc3545;
-  padding: 6px 12px;
-  border-radius: 4px;
+  gap: 10px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.2s;
 }
 
-.logout-btn:hover {
-  background-color: #dc3545;
+.user-section:hover {
+  background: #2a2a2a;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #444;
+}
+
+/* Гамбургер меню - теперь всегда видно */
+.hamburger {
+  background: none;
+  border: none;
   color: white;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 8px;
+  display: block;                 /* ← Изменили на block */
 }
 
+/* Боковое меню */
 .sidebar {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0,0,0,0.7);
-  z-index: 2000;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 200;
   display: flex;
   justify-content: flex-start;
 }
@@ -94,15 +115,10 @@
 .sidebar-content {
   width: 280px;
   height: 100%;
-  background: #1a1a1a;
+  background: #141414;
   padding: 20px;
-  box-shadow: 4px 0 20px rgba(0,0,0,0.6);
-  animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+  overflow-y: auto;
+  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.5);
 }
 
 .sidebar-header {
@@ -110,113 +126,51 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #333;
+}
+
+.sidebar-header h3 {
+  margin: 0;
   color: white;
 }
 
-.sidebar-item {
-  width: 100%;
-  padding: 16px;
-  background: #222;
-  color: #ddd;
-  border: none;
-  border-radius: 8px;
-  text-align: left;
-  font-size: 1.05rem;
-  margin-bottom: 8px;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.sidebar-item:hover {
-  background: #0066ff;
-  color: white;
-}
-
-.logout {
-  background: #c42b2b !important;
-  margin-top: 20px;
-}
-
-.user-section {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-}
-
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-}
-
-.hamburger {
-  font-size: 28px;
+.close-btn {
   background: none;
   border: none;
   color: white;
+  font-size: 26px;
   cursor: pointer;
-  padding: 8px;
-  margin-right: 12px;
-}
-
-.sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.6);
-  z-index: 2000;
-}
-
-.sidebar-content {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 280px;
-  height: 100%;
-  background: #1a1a1a;
-  padding: 20px;
-  box-shadow: 4px 0 20px rgba(0,0,0,0.7);
-  transition: transform 0.3s ease;
-  transform: translateX(0);
-}
-
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
-  color: white;
 }
 
 .sidebar-item {
+  display: block;
   width: 100%;
-  padding: 16px 20px;
-  background: #222;
-  color: #ddd;
-  border: none;
+  padding: 14px 16px;
+  color: white;
+  text-decoration: none;
+  font-size: 16px;
   border-radius: 8px;
-  text-align: left;
-  font-size: 1.05rem;
-  margin-bottom: 8px;
-  cursor: pointer;
+  margin-bottom: 6px;
+  transition: background 0.2s;
 }
 
 .sidebar-item:hover {
-  background: #0066ff;
-  color: white;
+  background: #2a2a2a;
 }
 
 .logout {
-  background: #c42b2b !important;
+  color: #ff4b4b;
   margin-top: 30px;
 }
 
-/* Сдвиг контента (как на YouTube) */
-body.menu-open .main-layout,
-body.menu-open main {
-  margin-left: 280px;
-  transition: margin-left 0.3s ease;
+.logout:hover {
+  background: rgba(255, 75, 75, 0.1);
+}
+
+/* Адаптивность */
+@media (max-width: 992px) {
+  .nav-menu {
+    display: none;
+  }
 }

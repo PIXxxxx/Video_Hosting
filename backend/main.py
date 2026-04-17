@@ -117,7 +117,7 @@ def get_my_videos(
     videos = db.query(models.Video).filter(
         models.Video.author_id == current_user.id
     ).order_by(models.Video.upload_date.desc()).all()
-    
+    # todo: оптимизировать код "id": v.id
     result = []
     for v in videos:
         result.append
@@ -155,7 +155,7 @@ async def upload_video(
         if not file.content_type.startswith('video/'):
             raise HTTPException(status_code=400, detail="Файл должен быть видео")
         
-        file_extension = os.path.splitext(file.filename)[1]
+        file_extension = os.path.splitext(file.filename)[1] # TODO: possible bug!!!
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         file_path = os.path.join("uploads", unique_filename)
         
@@ -268,12 +268,16 @@ def get_videos(
     ).order_by(models.Video.upload_date.desc()).offset(skip).limit(limit).all()
         
         result = []
+        
         for v in videos:
+            # TODO: избавиться от ""http://localhost:8000/" возможно, можно просто /media/...
+            # TODO: отрефакторить?
             thumbnail_url = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
             custom_thumbnail = getattr(v, 'custom_thumbnail_path', None)
             if custom_thumbnail:
                 thumbnail_url = f"http://localhost:8000/media/{custom_thumbnail}"
             
+            # TODO: вынести в функцию?
             result.append({
                 "id": v.id,
                 "title": v.title,
@@ -513,6 +517,7 @@ def toggle_like(
 @app.get("/api/video/{video_id}/likes")
 def get_likes(video_id: int, db: Session = Depends(get_db)):
     likes = db.query(models.Like).filter(models.Like.video_id == video_id).all()
+    # TODO: optimize via query
     like_count = sum(1 for l in likes if l.is_like)
     dislike_count = len(likes) - like_count
     return {"likes": like_count, "dislikes": dislike_count}
@@ -729,3 +734,102 @@ def get_subscriptions_feed(
         })
     
     return result
+
+@app.get("/api/recommendations/personal")
+def get_personal_recommendations(
+    limit: int = Query(12, ge=1, le=30),
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Персональные рекомендации на основе истории просмотров пользователя"""
+    
+    # 1. Получаем последние 15 просмотренных видео пользователя
+    watched = db.query(models.WatchHistory)\
+        .options(joinedload(models.WatchHistory.video))\
+        .filter(models.WatchHistory.user_id == current_user.id)\
+        .order_by(models.WatchHistory.watched_at.desc())\
+        .limit(15)\
+        .all()
+
+    if not watched:
+        # Если истории нет — возвращаем просто популярные видео
+        popular = db.query(models.Video)\
+            .filter(models.Video.is_private == False)\
+            .order_by(models.Video.views.desc())\
+            .limit(limit)\
+            .all()
+        return format_videos(popular)
+
+    # 2. Собираем все теги из просмотренных видео с весом (чем новее — тем важнее)
+    tag_score = {}
+    for i, entry in enumerate(watched):
+        if not entry.video or not entry.video.tags:
+            continue
+            
+        weight = 1.0 / (i + 1)   # более свежие просмотры имеют больший вес
+        
+        for tag in [t.strip().lower() for t in entry.video.tags.split(',') if t.strip()]:
+            if tag in tag_score:
+                tag_score[tag] += weight
+            else:
+                tag_score[tag] = weight
+
+    if not tag_score:
+        # Если тегов нет — популярные видео
+        popular = db.query(models.Video)\
+            .filter(models.Video.is_private == False)\
+            .order_by(models.Video.views.desc())\
+            .limit(limit)\
+            .all()
+        return format_videos(popular)
+
+    # 3. Ищем видео, которые имеют пересечение тегов
+    recommendations = []
+    seen_ids = {w.video_id for w in watched}
+
+    all_videos = db.query(models.Video)\
+        .filter(
+            models.Video.is_private == False,
+            models.Video.id.notin_(seen_ids)
+        )\
+        .all()
+
+    for video in all_videos:
+        if not video.tags:
+            continue
+
+        video_tags = [t.strip().lower() for t in video.tags.split(',') if t.strip()]
+        
+        # Считаем score для этого видео
+        video_score = sum(tag_score.get(tag, 0) for tag in video_tags)
+
+        if video_score > 0:
+            recommendations.append({
+                "id": video.id,
+                "title": video.title,
+                "author": video.author.username if video.author else "Аноним",
+                "author_id": video.author_id,
+                "views": video.views,
+                "upload_date": video.upload_date.isoformat(),
+                "thumbnail": f"http://localhost:8000/media/thumbnails/{video.id}.jpg",
+                "score": video_score,
+                "match_tags": [tag for tag in video_tags if tag in tag_score]
+            })
+
+    # Сортируем по score (чем выше — тем лучше)
+    recommendations.sort(key=lambda x: x["score"], reverse=True)
+
+    return [rec for rec in recommendations if "score" in rec][:limit]
+
+
+def format_videos(videos):
+    """Вспомогательная функция для форматирования списка видео"""
+    return [{
+        "id": v.id,
+        "title": v.title,
+        "author": v.author.username if v.author else "Аноним",
+        "author_id": v.author_id,
+        "views": v.views,
+        "upload_date": v.upload_date.isoformat(),
+        "thumbnail": f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
+    } for v in videos]

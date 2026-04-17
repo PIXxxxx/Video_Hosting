@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import styles from './UploadForm.module.css'; // Импорт как модуль
 
 const UploadForm = () => {
     const [file, setFile] = useState<File | null>(null);
@@ -46,7 +47,13 @@ const UploadForm = () => {
             
             // Очищаем форму
             setTitle('');
+            setDescription('');
+            setTags('');
             setFile(null);
+            
+            // Очищаем input file
+            const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+            if (fileInput) fileInput.value = '';
             
         } catch (error: any) {
             console.error('Ошибка загрузки:', error);
@@ -58,71 +65,96 @@ const UploadForm = () => {
 
     if (!user) {
         return (
-            <div className="message error">
+            <div className={styles['auth-message']}>
                 <p>Для загрузки видео необходимо <a href="/login">войти</a> в аккаунт</p>
             </div>
         );
     }
 
     return (
-        <div>
-            <form onSubmit={handleSubmit}>
-                <input
-                    type="text"
-                    placeholder="Название видео"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    disabled={uploading}
-                />
+        <div className={styles['upload-container']}>
+            <div className={styles['upload-form']}>
+                <form onSubmit={handleSubmit}>
+                    <div className={styles['form-group']}>
+                        <label>Название видео</label>
+                        <input
+                            className={styles['form-input']}
+                            type="text"
+                            placeholder="Введите название видео..."
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            disabled={uploading}
+                        />
+                    </div>
 
-                                <textarea
-                placeholder="Описание видео (можно использовать ссылки, тайм-коды и т.д.)"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                rows={6}
-                />
+                    <div className={styles['form-group']}>
+                        <label>Описание видео</label>
+                        <textarea
+                            className={styles['form-textarea']}
+                            placeholder="Описание видео (можно использовать ссылки, тайм-коды и т.д.)"
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            rows={6}
+                            disabled={uploading}
+                        />
+                    </div>
 
-                <input
-                type="text"
-                placeholder="Теги через запятую (python, fastapi, видеоурок)"
-                value={tags}
-                onChange={e => setTags(e.target.value)}
-                />
-                
-                <input
-                    type="file"
-                    accept="video/*"
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
-                    disabled={uploading}
-                />
-                
-                <button type="submit" disabled={uploading}>
-                    {uploading ? 'Загрузка...' : 'Загрузить видео'}
-                </button>
-            </form>
+                    <div className={styles['form-group']}>
+                        <label>Теги</label>
+                        <input
+                            className={styles['form-tags']}
+                            type="text"
+                            placeholder="python, fastapi, видеоурок"
+                            value={tags}
+                            onChange={e => setTags(e.target.value)}
+                            disabled={uploading}
+                        />
+                    </div>
+                    
+                    <div className={styles['form-group']}>
+                        <label>Видео файл</label>
+                        <div className={styles['file-input-wrapper']}>
+                            <input
+                                type="file"
+                                accept="video/*"
+                                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                disabled={uploading}
+                                className={styles['file-input']}
+                                id="file-upload"
+                            />
+                            <label htmlFor="file-upload" className={styles['file-input-label']}>
+                                📹 {file ? 'Файл выбран' : 'Выберите видео'}
+                            </label>
+                        </div>
+                        {file && <div className={styles['file-name']}>{file.name}</div>}
+                    </div>
+                    
+                    <button type="submit" disabled={uploading} className={styles['submit-button']}>
+                        {uploading ? '⏳ Загрузка...' : '🚀 Загрузить видео'}
+                    </button>
+                </form>
 
-            {message && (
-                <div className="message">
-                    <p>{message}</p>
-                    {uploadedVideo && (
-                        <div className="video-info">
-                            <p>Видео "{uploadedVideo.title}" загружено!</p>
-                            <p>Оно будет доступно после обработки</p>
-                            <p>
+                {message && (
+                    <div className={`${styles.message} ${styles.success}`}>
+                        <p>✅ {message}</p>
+                        {uploadedVideo && (
+                            <div className={styles['video-info']}>
+                                <p>Видео "{uploadedVideo.title}" загружено!</p>
+                                <p>Оно будет доступно после обработки</p>
                                 <a href={`/video/${uploadedVideo.id}`}>
                                     Перейти к видео →
                                 </a>
-                            </p>
-                        </div>
-                    )}
-                </div>
-            )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
-            {error && (
-                <div className="message error">
-                    <p>{error}</p>
-                </div>
-            )}
+                {error && (
+                    <div className={`${styles.message} ${styles.error}`}>
+                        <p>❌ {error}</p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

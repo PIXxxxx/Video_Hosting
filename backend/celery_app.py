@@ -72,9 +72,6 @@ def process_video_task(self, video_id, input_path):
     
     results = {}
     
-    # ────────────────────────────────────────────────
-    # 1. Multi-quality HLS (360p, 480p, 720p)
-    # ────────────────────────────────────────────────
     print(f"\n{'#'*50}")
     print("🔄 ШАГ 1/3: Создание multi-quality HLS (master.m3u8)")
     print(f"{'#'*50}")
@@ -143,26 +140,51 @@ def process_video_task(self, video_id, input_path):
         results['hls'] = False
     
     # ────────────────────────────────────────────────
-    # 2. Миниатюра (постер)
+    # 2. Миниатюра — максимально простой вариант для диагностики
     # ────────────────────────────────────────────────
-    print(f"\n{'#'*50}")
-    print("🖼️ ШАГ 2/3: Создание миниатюры")
-    print(f"{'#'*50}")
-    
+    print(f"\n{'#'*60}")
+    print("🖼️ ШАГ 2/3: Создание миниатюры (ДИАГНОСТИКА)")
+    print(f"{'#'*60}")
+
+    thumbnails_dir = "media/thumbnails/"
+    os.makedirs(thumbnails_dir, exist_ok=True)
+    thumbnail_path = os.path.join(thumbnails_dir, f"{video_id}.jpg")
+
+    print(f"Путь к миниатюре: {thumbnail_path}")
+    print(f"FFmpeg путь: {FFMPEG_PATH}")
+    print(f"Исходный файл существует: {os.path.exists(input_path)}")
+
+    # Самая простая команда FFmpeg
     cmd_thumb = [
-        FFMPEG_PATH, '-i', input_path,
-        '-ss', '00:00:02', '-vframes', '1',
-        '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2',
+        FFMPEG_PATH,
+        '-i', input_path,
+        '-ss', '00:00:03',      # берём 3 секунду
+        '-vframes', '1',
         '-y', thumbnail_path
     ]
-    
+
+    print("Выполняем команду:")
+    print(' '.join(cmd_thumb))
+
     try:
-        res_thumb = subprocess.run(cmd_thumb, capture_output=True, text=True)
-        results['thumbnail'] = res_thumb.returncode == 0
-        if results['thumbnail']:
-            print(f"✅ Миниатюра: {thumbnail_path}")
+        result = subprocess.run(cmd_thumb, capture_output=True, text=True, timeout=30)
+
+        print(f"Код возврата FFmpeg: {result.returncode}")
+        if result.stdout:
+            print(f"STDOUT: {result.stdout[:300]}...")
+        if result.stderr:
+            print(f"STDERR: {result.stderr[-500:]}")
+
+        if result.returncode == 0 and os.path.exists(thumbnail_path):
+            print(f"✅ Миниатюра УСПЕШНО создана: {thumbnail_path}")
+            print(f"Размер файла: {os.path.getsize(thumbnail_path)} байт")
+            results['thumbnail'] = True
+        else:
+            print("❌ Миниатюра НЕ создана")
+            results['thumbnail'] = False
+
     except Exception as e:
-        print(f"❌ Ошибка миниатюры: {e}")
+        print(f"❌ Исключение при создании миниатюры: {type(e).__name__}: {e}")
         results['thumbnail'] = False
     
     # ────────────────────────────────────────────────

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import Hls from 'hls.js';
+
 import VideoCard from '../components/VideoCard';
 import CommentSection from '../components/CommentSection';
 import SubscribeButton from '../components/SubscribeButton';
+import VideoPlayer from '../components/VideoPlayer';
 import { useAuth } from '../context/AuthContext';
 import './VideoWatchPage.css';
 
@@ -34,9 +35,7 @@ const VideoWatchPage: React.FC = () => {
   const [dislikes, setDislikes] = useState(0);
   const [userLikeStatus, setUserLikeStatus] = useState<boolean | null>(null);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const hlsRef = useRef<Hls | null>(null);
-
+  // Загрузка данных
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -52,9 +51,9 @@ const VideoWatchPage: React.FC = () => {
 
         setLikes(likesRes.data.likes);
         setDislikes(likesRes.data.dislikes);
-
         setLoading(false);
       } catch (err) {
+        console.error(err);
         setError('Не удалось загрузить видео');
         setLoading(false);
       }
@@ -62,64 +61,6 @@ const VideoWatchPage: React.FC = () => {
 
     if (id) fetchData();
   }, [id]);
-
-  useEffect(() => {
-    if (!video || !videoRef.current) return;
-
-    const videoEl = videoRef.current;
-
-    if (hlsRef.current) {
-      hlsRef.current.destroy();
-      hlsRef.current = null;
-    }
-
-    if (video.hls_playlist_path) {
-      const videoUrl = `http://localhost:8000/${video.hls_playlist_path.replace(/\\/g, '/')}`;
-
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          debug: false,
-          maxBufferLength: 30,
-          maxMaxBufferLength: 60,
-          maxBufferSize: 60 * 1024 * 1024,
-          backBufferLength: 90,
-          lowLatencyMode: false,
-          fragLoadingMaxRetry: 6,
-          fragLoadingRetryDelay: 500,
-        });
-
-        hlsRef.current = hls;
-        hls.loadSource(videoUrl);
-        hls.attachMedia(videoEl);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          videoEl.play().catch(() => {});
-        });
-
-        hls.on(Hls.Events.ERROR, (_, data) => {
-          if (data.fatal) {
-            setError('HLS не работает, переключаемся на MP4...');
-            if (video.file_path) {
-              videoEl.src = `http://localhost:8000/${video.file_path.replace(/\\/g, '/')}`;
-              videoEl.load();
-            }
-          }
-        });
-      } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-        videoEl.src = videoUrl;
-      }
-    } else if (video.file_path) {
-      videoEl.src = `http://localhost:8000/${video.file_path.replace(/\\/g, '/')}`;
-      videoEl.load();
-    }
-
-    return () => {
-      if (hlsRef.current) {
-        hlsRef.current.destroy();
-        hlsRef.current = null;
-      }
-    };
-  }, [video]);
 
   const toggleLike = async (isLike: boolean) => {
     try {
@@ -140,17 +81,30 @@ const VideoWatchPage: React.FC = () => {
     <div className="video-watch-page">
       <div className="main-layout">
         <div className="left-column">
+          
+          {/* Плеер */}
           <div className="video-player-wrapper">
-            <video
-              ref={videoRef}
-              controls
-              playsInline
-              poster={`http://localhost:8000/media/thumbnails/${video.id}.jpg`}
-            />
+            {video.hls_playlist_path ? (
+              <VideoPlayer 
+                src={`http://localhost:8000/${video.hls_playlist_path.replace(/\\/g, '/')}`}
+                poster={`http://localhost:8000/media/thumbnails/${video.id}.jpg`}
+              />
+            ) : video.file_path ? (
+              <video
+                controls
+                playsInline
+                poster={`http://localhost:8000/media/thumbnails/${video.id}.jpg`}
+                src={`http://localhost:8000/${video.file_path.replace(/\\/g, '/')}`}
+              />
+            ) : (
+              <p>Видео ещё обрабатывается или недоступно</p>
+            )}
           </div>
 
+          {/* Информация о видео */}
           <div className="video-info">
             <h1>{video.title}</h1>
+            
             <div className="meta">
               <span>{video.views} просмотров</span>
               <span>•</span>
@@ -158,9 +112,17 @@ const VideoWatchPage: React.FC = () => {
             </div>
 
             <div className="author-block">
-              <p className="author">Автор: {video.author || 'Аноним'}</p>
+              {/* Исправленная кликабельная ссылка на автора */}
+              <p className="author">
+                Автор: {' '}
+                <Link 
+                  to={`/channel/${video.author_id}`}
+                  className="author-link"
+                >
+                  {video.author || 'Аноним'}
+                </Link>
+              </p>
 
-              {/* Кнопка подписки под видео */}
               {video.author_id && (
                 <SubscribeButton authorId={video.author_id} />
               )}
@@ -195,6 +157,7 @@ const VideoWatchPage: React.FC = () => {
           <CommentSection videoId={Number(id)} />
         </div>
 
+        {/* Рекомендации */}
         <aside className="right-column">
           <div className="related-section">
             <h2>Рекомендации</h2>
