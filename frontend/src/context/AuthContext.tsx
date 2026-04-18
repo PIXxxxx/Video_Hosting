@@ -32,15 +32,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
-  // Установка токена в axios при изменении
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [token]);
-
   // Проверка токена при загрузке приложения
   useEffect(() => {
     const fetchUser = async () => {
@@ -50,6 +41,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
+        // Устанавливаем заголовок перед запросом
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         const response = await axios.get('http://localhost:8000/api/users/me');
         setUser(response.data);
       } catch (error: any) {
@@ -59,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error.response?.status === 401) {
           localStorage.removeItem('token');
           setToken(null);
+          delete axios.defaults.headers.common['Authorization'];
         }
       } finally {
         setLoading(false);
@@ -79,11 +73,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Сохраняем токен
       localStorage.setItem('token', access_token);
+      
+      // Устанавливаем заголовок ДО запроса пользователя
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      
       setToken(access_token);
 
       // Запрашиваем данные пользователя
       const userResponse = await axios.get('http://localhost:8000/api/users/me');
-      
       setUser(userResponse.data);
       
       console.log("✅ Успешный вход");
@@ -95,14 +92,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (email: string, username: string, password: string) => {
     try {
+      // Регистрация
       await axios.post('http://localhost:8000/api/register', {
         email,
         username,
         password
       });
       
-      // После регистрации сразу логинимся
-      await login(username, password);
+      // После регистрации логинимся
+      const formData = new FormData();
+      formData.append('username', username);
+      formData.append('password', password);
+
+      const loginResponse = await axios.post('http://localhost:8000/api/login', formData);
+      const { access_token } = loginResponse.data;
+
+      // Сохраняем токен
+      localStorage.setItem('token', access_token);
+      
+      // Устанавливаем заголовок ДО запроса пользователя
+      axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      
+      setToken(access_token);
+
+      // Запрашиваем данные пользователя
+      const userResponse = await axios.get('http://localhost:8000/api/users/me');
+      setUser(userResponse.data);
+      
+      console.log("✅ Регистрация и вход успешны");
     } catch (error: any) {
       console.error('Registration failed:', error.response?.data || error.message);
       throw error;

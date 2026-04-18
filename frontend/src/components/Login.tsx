@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
@@ -7,7 +8,14 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,10 +24,9 @@ const Login: React.FC = () => {
     
     try {
       await login(username, password);
-      window.location.href = '/'; // Перенаправляем на главную
+      // Успех - useEffect сделает редирект
     } catch (err) {
       setError('Неверное имя пользователя или пароль');
-    } finally {
       setLoading(false);
     }
   };

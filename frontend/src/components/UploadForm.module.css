@@ -443,3 +443,81 @@
 .submit-button:disabled {
   animation: pulse 1.5s ease-in-out infinite;
 }
+
+/* Теги в стиле чипсов - СИНИЙ вариант как в редактировании */
+.tags-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  background: #121212;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-height: 42px;
+  transition: all 0.2s ease;
+}
+
+.tags-input-container:focus-within {
+  border-color: #3ea6ff;
+  box-shadow: 0 0 0 1px #3ea6ff;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #3ea6ff;
+  color: #0f0f0f;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.tag-chip:hover {
+  background: #5cb8ff;
+  transform: scale(1.02);
+}
+
+.tag-remove {
+  cursor: pointer;
+  font-size: 12px;
+  color: #0f0f0f;
+  transition: color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.tag-remove:hover {
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+}
+
+.tag-input {
+  flex: 1;
+  min-width: 120px;
+  background: transparent;
+  border: none;
+  color: #f1f1f1;
+  padding: 6px 0;
+  font-size: 14px;
+  outline: none;
+}
+
+.tag-input::placeholder {
+  color: #888;
+}
+
+.tag-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #888;
+}

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
 
@@ -9,13 +10,20 @@ const Register: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  // Перенаправляем, когда пользователь успешно зарегистрировался
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(''); // Очищаем ошибку при новом сабмите
 
-    // Валидация
     if (password !== confirmPassword) {
       setError('Пароли не совпадают');
       return;
@@ -26,24 +34,17 @@ const Register: React.FC = () => {
       return;
     }
 
-    if (username.length < 3) {
-      setError('Имя пользователя должно содержать минимум 3 символа');
-      return;
-    }
-
     setLoading(true);
 
     try {
       await register(email, username, password);
-      window.location.href = '/'; // Перенаправляем на главную
+      // Успех - useEffect сделает редирект
+      // Не показываем ошибку
     } catch (err: any) {
-      if (err.response?.data?.detail) {
-        setError(err.response.data.detail);
-      } else {
-        setError('Ошибка при регистрации');
-      }
-    } finally {
-      setLoading(false);
+      console.error('Registration error:', err);
+      const errorMsg = err.response?.data?.detail || 'Ошибка при регистрации';
+      setError(errorMsg);
+      setLoading(false); // Сбрасываем loading только при ошибке
     }
   };
 
@@ -73,26 +74,24 @@ const Register: React.FC = () => {
             onChange={(e) => setUsername(e.target.value)}
             required
             disabled={loading}
-            minLength={3}
           />
         </div>
         
         <div className="form-group">
           <input
             type="password"
-            placeholder="Пароль"
+            placeholder="Пароль (минимум 6 символов)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={loading}
-            minLength={6}
           />
         </div>
         
         <div className="form-group">
           <input
             type="password"
-            placeholder="Подтверждение пароля"
+            placeholder="Подтвердите пароль"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required

@@ -11,63 +11,86 @@ const UploadForm = () => {
     const [error, setError] = useState('');
     const [uploadedVideo, setUploadedVideo] = useState<{ id: number; title: string } | null>(null);
     const [description, setDescription] = useState('');
-    const [tags, setTags] = useState('');
+    const [tags, setTags] = useState<string[]>([]); // Изменено на массив
+    const [tagInput, setTagInput] = useState(''); // Для ввода нового тега
     const { user } = useAuth();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file) {
-        setError('Выберите файл для загрузки');
-        return;
-    }
-
-    setUploading(true);
-    setMessage('');
-    setError('');
-    setUploadedVideo(null);
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('tags', tags);
-
-    try {
-        // Явно передаём токен в заголовке
-        const response = await axios.post('http://localhost:8000/api/upload/', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`   // ← Добавили это
-            },
-        });
-        
-        setMessage('Видео успешно загружено!');
-        setUploadedVideo({
-            id: response.data.video_id,
-            title: response.data.title
-        });
-        
-        // Очищаем форму
-        setTitle('');
-        setDescription('');
-        setTags('');
-        setFile(null);
-        
-        const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-        if (fileInput) fileInput.value = '';
-        
-    } catch (error: any) {
-        console.error('Ошибка загрузки:', error);
-        setError(error.response?.data?.detail || 'Ошибка при загрузке видео');
-        
-        // Если 401 — возможно токен истёк
-        if (error.response?.status === 401) {
-            setError('Сессия истекла. Пожалуйста, войдите заново.');
+    // Добавление тега
+    const addTag = () => {
+        const trimmed = tagInput.trim();
+        if (trimmed && !tags.includes(trimmed)) {
+            setTags([...tags, trimmed]);
         }
-    } finally {
-        setUploading(false);
-    }
-};
+        setTagInput('');
+    };
+
+    // Удаление тега
+    const removeTag = (tagToRemove: string) => {
+        setTags(tags.filter((tag: string) => tag !== tagToRemove));
+    };
+
+    // Обработка нажатия клавиш
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            addTag();
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!file) {
+            setError('Выберите файл для загрузки');
+            return;
+        }
+
+        setUploading(true);
+        setMessage('');
+        setError('');
+        setUploadedVideo(null);
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', title);
+        formData.append('description', description);
+        // Преобразуем массив тегов в строку через запятую
+        formData.append('tags', tags.join(', '));
+
+        try {
+            const response = await axios.post('http://localhost:8000/api/upload/', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+            });
+            
+            setMessage('Видео успешно загружено!');
+            setUploadedVideo({
+                id: response.data.video_id,
+                title: response.data.title
+            });
+            
+            // Очищаем форму
+            setTitle('');
+            setDescription('');
+            setTags([]); // Очищаем массив тегов
+            setTagInput(''); // Очищаем поле ввода тегов
+            setFile(null);
+            
+            const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+            if (fileInput) fileInput.value = '';
+            
+        } catch (error: any) {
+            console.error('Ошибка загрузки:', error);
+            setError(error.response?.data?.detail || 'Ошибка при загрузке видео');
+            
+            if (error.response?.status === 401) {
+                setError('Сессия истекла. Пожалуйста, войдите заново.');
+            }
+        } finally {
+            setUploading(false);
+        }
+    };
 
     if (!user) {
         return (
@@ -107,14 +130,29 @@ const UploadForm = () => {
 
                     <div className={styles['form-group']}>
                         <label>Теги</label>
-                        <input
-                            className={styles['form-tags']}
-                            type="text"
-                            placeholder="python, fastapi, видеоурок"
-                            value={tags}
-                            onChange={e => setTags(e.target.value)}
-                            disabled={uploading}
-                        />
+                        <div className={styles['tags-input-container']}>
+                            {tags.map((tag, index) => (
+                                <div key={index} className={styles['tag-chip']}>
+                                    {tag}
+                                    <span 
+                                        className={styles['tag-remove']}
+                                        onClick={() => removeTag(tag)}
+                                    >
+                                        ✕
+                                    </span>
+                                </div>
+                            ))}
+                            <input
+                                type="text"
+                                className={styles['tag-input']}
+                                placeholder="Новый тег + Enter"
+                                value={tagInput}
+                                onChange={(e) => setTagInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                disabled={uploading}
+                            />
+                        </div>
+                        <small className={styles['tag-hint']}>Нажмите Enter для добавления тега</small>
                     </div>
                     
                     <div className={styles['form-group']}>

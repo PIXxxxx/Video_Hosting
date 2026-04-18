@@ -35,8 +35,9 @@ const VideoWatchPage: React.FC = () => {
   const [likes, setLikes] = useState(0);
   const [dislikes, setDislikes] = useState(0);
   const [userLikeStatus, setUserLikeStatus] = useState<boolean | null>(null);
+  const [viewIncremented, setViewIncremented] = useState(false); // Флаг для предотвращения повторных вызовов
 
-  // Загрузка данных + засчёт просмотра
+  // Загрузка данных
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -65,6 +66,31 @@ const VideoWatchPage: React.FC = () => {
 
     if (id) fetchData();
   }, [id]);
+
+  // Отдельный эффект для увеличения просмотров (только один раз)
+  useEffect(() => {
+    const incrementView = async () => {
+      if (id && !loading && !viewIncremented) {
+        try {
+          // Вызываем API для увеличения просмотров
+          await axios.post(`http://localhost:8000/api/video/${id}/view`);
+          
+          // Перезапрашиваем актуальные данные с сервера
+          const videoRes = await axios.get(`http://localhost:8000/api/video/${id}`);
+          setVideo(videoRes.data);
+          
+          // Устанавливаем флаг, чтобы больше не отправлять запросы
+          setViewIncremented(true);
+          
+          console.log(`✅ Просмотр засчитан, новое значение: ${videoRes.data.views}`);
+        } catch (err) {
+          console.error('❌ Ошибка при засчёте просмотра:', err);
+        }
+      }
+    };
+
+    incrementView();
+  }, [id, loading, viewIncremented]); // Убрали video из зависимостей
 
   const toggleLike = async (isLike: boolean) => {
     try {
