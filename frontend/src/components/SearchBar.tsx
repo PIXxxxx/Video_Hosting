@@ -8,22 +8,27 @@ const SearchBar: React.FC = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [loading, setLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (query.length < 2) {
       setResults([]);
       setShowResults(false);
+      setLoading(false);
       return;
     }
 
+    setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await axios.get(`http://localhost:8000/api/search?q=${query}`);
+        const res = await axios.get(`http://localhost:8000/api/search?q=${encodeURIComponent(query)}`);
         setResults(res.data);
         setShowResults(true);
       } catch (err) {
-        console.error(err);
+        console.error('Search error:', err);
+      } finally {
+        setLoading(false);
       }
     }, 300);
 
@@ -55,7 +60,9 @@ const SearchBar: React.FC = () => {
 
       {showResults && (
         <div className="search-results">
-          {results.length > 0 ? (
+          {loading ? (
+            <div className="no-results">Поиск...</div>
+          ) : results.length > 0 ? (
             results.map(video => (
               <Link 
                 key={video.id}
@@ -71,7 +78,7 @@ const SearchBar: React.FC = () => {
                   alt={video.title}
                   className="search-thumbnail"
                   onError={(e) => {
-                    e.currentTarget.src = 'https://via.placeholder.com/80x45/333/fff?text=Нет+фото';
+                    e.currentTarget.src = 'https://via.placeholder.com/88x50/333/fff?text=No+image';
                   }}
                 />
                 <div className="search-info">

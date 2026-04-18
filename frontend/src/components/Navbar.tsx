@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import SearchBar from './SearchBar';
 import './Navbar.css';
+import { useTheme } from '../hooks/useTheme';
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     if (menuOpen) {
@@ -34,8 +36,11 @@ const Navbar: React.FC = () => {
           <Link to="/" className="nav-logo">VideoHosting</Link>
 
           <div className="nav-menu">
+            <button onClick={toggleTheme} className="theme-toggle">
+              {theme === 'light' ? '🌙 Тёмная' : '☀️ Светлая'}
+            </button>
             <SearchBar />
-            <a href="/upload" className="nav-link">Загрузить видео</a>
+            <Link to="/upload" className="nav-link">Загрузить видео</Link>
 
             {isAuthenticated && user ? (
               <div className="user-section" onClick={goToMyChannel}>
@@ -81,7 +86,7 @@ const Navbar: React.FC = () => {
               onClick={() => { logout(); setMenuOpen(false); }} 
               className="sidebar-item logout"
             >
-              Выйти
+              🚪 Выйти
             </button>
           </div>
         </div>

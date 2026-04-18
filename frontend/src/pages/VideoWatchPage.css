@@ -1,10 +1,11 @@
-/* VideoWatchPage.css */
+/* VideoWatchPage.css - YouTube стиль с поддержкой тем */
 
 .video-watch-page {
-  background: #0f0f0f;
+  background: var(--yt-bg-primary);
   min-height: 100vh;
   padding: 24px 32px;
-  color: #f1f1f1;
+  color: var(--yt-text-primary);
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .main-layout {
@@ -33,7 +34,7 @@
 .video-player-wrapper {
   position: relative;
   width: 100%;
-  padding-top: 56.25%; /* 16:9 */
+  padding-top: 56.25%;
   background: #000;
   border-radius: 16px;
   overflow: hidden;
@@ -73,7 +74,7 @@
 
 .progress-bar {
   width: 100%;
-  accent-color: #3ea6ff;
+  accent-color: var(--yt-accent);
   cursor: pointer;
   height: 5px;
   border-radius: 3px;
@@ -142,24 +143,25 @@
   position: absolute;
   bottom: 110%;
   right: 0;
-  background: #272727;
+  background: var(--yt-bg-tertiary);
   border-radius: 8px;
   padding: 8px 0;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  box-shadow: var(--yt-shadow-hover);
   z-index: 30;
   min-width: 140px;
 }
 
 .quality-option {
   padding: 10px 18px;
-  color: white;
+  color: var(--yt-text-primary);
   cursor: pointer;
   font-size: 0.95rem;
+  transition: all 0.2s;
 }
 
 .quality-option:hover {
-  background: #3ea6ff;
-  color: #000;
+  background: var(--yt-accent);
+  color: #fff;
 }
 
 /* ====================== ИНФОРМАЦИЯ О ВИДЕО ====================== */
@@ -172,18 +174,19 @@
   font-weight: 600;
   line-height: 1.35;
   margin-bottom: 12px;
+  color: var(--yt-text-primary);
 }
 
 .meta {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #aaaaaa;
+  color: var(--yt-text-secondary);
   font-size: 0.95rem;
   margin-bottom: 20px;
 }
 
-/* Лайки — улучшенный дизайн */
+/* Лайки */
 .like-buttons {
   display: flex;
   gap: 12px;
@@ -195,10 +198,10 @@
   align-items: center;
   gap: 10px;
   padding: 12px 24px;
-  background: #272727;
-  color: #f1f1f1;
+  background: var(--yt-bg-tertiary);
+  color: var(--yt-text-primary);
   border: none;
-  border-radius: 50px;
+  border-radius: 40px;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -206,13 +209,13 @@
 }
 
 .like-btn:hover {
-  background: #383838;
+  background: var(--yt-bg-hover);
   transform: translateY(-2px);
 }
 
 .like-btn.active {
-  background: #3ea6ff;
-  color: #0f0f0f;
+  background: var(--yt-accent);
+  color: #fff;
   font-weight: 600;
 }
 
@@ -227,17 +230,18 @@
   gap: 10px;
   margin-top: 16px;
   padding: 12px 24px;
-  background: #272727;
-  color: #3ea6ff;
+  background: var(--yt-bg-tertiary);
+  color: var(--yt-accent);
   text-decoration: none;
-  border-radius: 50px;
+  border-radius: 40px;
   font-weight: 500;
   transition: all 0.25s ease;
+  border: none;
 }
 
 .edit-link:hover {
-  background: #3a3a3a;
-  color: #5cb8ff;
+  background: var(--yt-bg-hover);
+  color: var(--yt-accent-hover);
   transform: translateX(6px);
 }
 
@@ -249,18 +253,19 @@
   flex-wrap: wrap;
   gap: 20px;
   padding: 20px 0;
-  border-top: 1px solid #272727;
-  border-bottom: 1px solid #272727;
+  border-top: 1px solid var(--yt-border);
+  border-bottom: 1px solid var(--yt-border);
   margin: 20px 0;
 }
 
 .author {
   font-size: 1.05rem;
   font-weight: 500;
+  color: var(--yt-text-primary);
 }
 
 .author-link {
-  color: #3ea6ff;
+  color: var(--yt-accent);
   text-decoration: none;
 }
 
@@ -270,12 +275,14 @@
 
 /* Описание */
 .description {
-  background: #1a1a1a;
+  background: var(--yt-bg-secondary);
   padding: 20px;
   border-radius: 12px;
   line-height: 1.65;
   white-space: pre-wrap;
   margin: 24px 0;
+  color: var(--yt-text-primary);
+  border: none;
 }
 
 /* ====================== РЕКОМЕНДАЦИИ ====================== */
@@ -283,13 +290,33 @@
   font-size: 1.35rem;
   margin-bottom: 18px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #272727;
+  border-bottom: 1px solid var(--yt-border);
+  color: var(--yt-text-primary);
 }
 
 .related-list {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* ====================== ЗАГРУЗКА И ОШИБКИ ====================== */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: var(--yt-text-secondary);
+  font-size: 16px;
+}
+
+.error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: var(--yt-red);
+  font-size: 16px;
 }
 
 /* Адаптивность */
@@ -324,5 +351,15 @@
   
   .video-info h1 {
     font-size: 1.4rem;
+  }
+  
+  .like-btn {
+    padding: 8px 18px;
+    font-size: 0.9rem;
+  }
+  
+  .author-block {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

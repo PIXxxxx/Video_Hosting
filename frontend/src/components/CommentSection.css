@@ -1,14 +1,16 @@
+/* CommentSection.css - YouTube стиль */
+
 .comments-section {
   margin: 40px 0;
-  padding: 20px;
-  background: #0f0f0f;
-  border-radius: 12px;
+  padding: 20px 0;
+  background: transparent;
 }
 
 .comments-section h3 {
   margin: 0 0 24px;
-  font-size: 1.5rem;
-  color: #ffffff;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--yt-text-primary);
 }
 
 .comment-form {
@@ -19,121 +21,162 @@
   width: 100%;
   min-height: 90px;
   padding: 14px;
-  border: 1px solid #333;
-  border-radius: 10px;
-  background: #1a1a1a;
-  color: #ffffff;
-  font-size: 1rem;
+  border: 1px solid var(--yt-border);
+  border-radius: 12px;
+  background: var(--yt-bg-input);
+  color: var(--yt-text-primary);
+  font-size: 14px;
   resize: vertical;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.comment-form textarea:focus {
+  outline: none;
+  border-color: var(--yt-accent);
 }
 
 .form-buttons {
   margin-top: 12px;
   display: flex;
   gap: 12px;
+  justify-content: flex-end;
 }
 
 .send-btn {
-  padding: 10px 24px;
-  background: #0066ff;
+  padding: 8px 20px;
+  background: var(--yt-accent);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 40px;
   font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.send-btn:hover {
+  background: var(--yt-accent-hover);
 }
 
 .cancel-btn {
-  padding: 10px 24px;
-  background: #333;
-  color: #ccc;
-  border: none;
-  border-radius: 8px;
+  padding: 8px 20px;
+  background: var(--yt-bg-tertiary);
+  color: var(--yt-text-primary);
+  border: 1px solid var(--yt-border);
+  border-radius: 40px;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn:hover {
+  background: var(--yt-bg-hover);
 }
 
 .auth-hint,
 .no-comments {
-  color: #aaa;
+  color: var(--yt-text-secondary);
   text-align: center;
-  font-size: 1rem;
-  margin: 20px 0;
+  font-size: 14px;
+  margin: 40px 0;
 }
 
 .comments-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .comment-item {
-  padding: 16px;
-  background: #181818;
-  border-radius: 10px;
-  border: 1px solid #2a2a2a;
+  padding: 0;
+  background: transparent;
+  border: none;
 }
 
 .comment-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-  color: #bbb;
-  font-size: 0.95rem;
+  margin-bottom: 8px;
+  color: var(--yt-text-secondary);
+  font-size: 13px;
 }
 
 .username {
-  color: #ffffff;
+  color: var(--yt-text-primary);
   font-weight: 600;
+  font-size: 14px;
 }
 
 .comment-text {
-  margin: 0 0 12px;
+  margin: 0 0 12px 0;
   line-height: 1.5;
-  color: #e0e0e0;
+  color: var(--yt-text-primary);
+  font-size: 14px;
 }
 
 .reply-button {
   background: none;
   border: none;
-  color: #4da6ff;
-  font-size: 0.9rem;
+  color: var(--yt-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
   padding: 0;
   margin-right: 16px;
+  transition: color 0.2s;
+}
+
+.reply-button:hover {
+  color: var(--yt-accent);
 }
 
 .toggle-replies-btn {
   background: none;
   border: none;
-  color: #66b3ff;
-  font-size: 0.9rem;
+  color: var(--yt-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 8px;
   padding: 0;
+}
+
+.toggle-replies-btn:hover {
+  color: var(--yt-accent);
 }
 
 .replies-list {
   margin-top: 16px;
-  padding-left: 20px;
-  border-left: 2px solid #333;
+  padding-left: 24px;
+  border-left: 2px solid var(--yt-border);
 }
 
 .reply-item {
   padding: 12px 0;
-  border-bottom: 1px solid #222;
 }
 
 .reply-header {
   display: flex;
   justify-content: space-between;
-  color: #aaa;
-  font-size: 0.9rem;
+  color: var(--yt-text-secondary);
+  font-size: 12px;
   margin-bottom: 6px;
 }
 
 .reply-text {
   margin: 0;
-  color: #d0d0d0;
+  color: var(--yt-text-primary);
   line-height: 1.4;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .comments-section {
+    margin: 24px 0;
+  }
+  
+  .replies-list {
+    padding-left: 16px;
+  }
 }

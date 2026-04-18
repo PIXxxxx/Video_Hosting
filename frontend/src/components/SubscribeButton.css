@@ -1,35 +1,51 @@
+/* SubscribeButton.css - YouTube стиль */
+
 .subscribe-wrapper {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin: 12px 0;
+  margin: 8px 0;
 }
 
 .subscribe-btn {
   padding: 8px 20px;
-  border-radius: 20px;
+  border-radius: 40px;
   font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
-}
-
-.subscribe-btn:not(.subscribed) {
-  background: #0066ff;
-  color: white;
+  transition: all 0.2s ease;
   border: none;
 }
 
-.subscribe-btn.subscribed {
-  background: #333;
-  color: #ccc;
-  border: 1px solid #555;
+.subscribe-btn:not(.subscribed) {
+  background: var(--yt-accent);
+  color: white;
 }
 
-.subscribe-btn:hover {
-  opacity: 0.9;
+.subscribe-btn:not(.subscribed):hover {
+  background: var(--yt-accent-hover);
+  transform: translateY(-1px);
+}
+
+.subscribe-btn.subscribed {
+  background: var(--yt-bg-tertiary);
+  color: var(--yt-text-primary);
+  border: 1px solid var(--yt-border);
+}
+
+.subscribe-btn.subscribed:hover {
+  background: rgba(204, 0, 0, 0.1);
+  color: var(--yt-red);
+  border-color: var(--yt-red);
+}
+
+.subscribe-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .subscribers-count {
-  color: #aaa;
-  font-size: 0.95rem;
+  color: var(--yt-text-secondary);
+  font-size: 14px;
 }

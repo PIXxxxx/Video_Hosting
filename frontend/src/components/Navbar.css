@@ -1,11 +1,13 @@
-/* Navbar.css */
+/* Navbar.css - YouTube стиль с поддержкой тем */
+
 .navbar {
-  background: #141414;
-  padding: 12px 0;
+  background: var(--yt-bg-primary);
+  padding: 8px 0;
   position: sticky;
   top: 0;
   z-index: 100;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--yt-border);
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .nav-container {
@@ -16,53 +18,53 @@
   align-items: center;
   justify-content: space-between;
   gap: 15px;
+  height: 56px;
 }
 
 /* Логотип */
 .nav-logo {
-  font-size: 24px;
-  font-weight: bold;
-  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--yt-text-primary);
   text-decoration: none;
   white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.nav-logo:hover {
+  color: var(--yt-accent);
 }
 
 /* Основное меню (для больших экранов) */
 .nav-menu {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex: 1;
   justify-content: flex-end;
 }
 
 /* Поиск */
-.search-container {
+.nav-menu .search-container {
   flex: 1;
   max-width: 520px;
-  margin: 0 20px;
+  margin: 0 16px;
 }
 
-/* Кнопки */
+/* Кнопки навигации */
 .nav-link {
-  color: white;
+  color: var(--yt-text-primary);
   text-decoration: none;
   padding: 8px 16px;
-  border-radius: 6px;
-  transition: background-color 0.2s;
+  border-radius: 40px;
+  transition: all 0.2s ease;
   white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .nav-link:hover {
-  background-color: #2a2a2a;
-}
-
-.register-link {
-  background-color: #007bff;
-}
-
-.register-link:hover {
-  background-color: #0056b3;
+  background-color: var(--yt-bg-hover);
 }
 
 /* Секция пользователя */
@@ -71,106 +73,223 @@
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 8px;
-  transition: background 0.2s;
+  padding: 6px 12px 6px 8px;
+  border-radius: 40px;
+  transition: all 0.2s ease;
 }
 
 .user-section:hover {
-  background: #2a2a2a;
+  background: var(--yt-bg-hover);
+}
+
+.username {
+  color: var(--yt-text-primary);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #444;
+  border: 1px solid var(--yt-border);
 }
 
-/* Гамбургер меню - теперь всегда видно */
+/* Кнопка переключения темы */
+.theme-toggle {
+  background: var(--yt-bg-tertiary);
+  border: 1px solid var(--yt-border);
+  border-radius: 40px;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 8px 12px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--yt-text-primary);
+}
+
+.theme-toggle:hover {
+  background: var(--yt-bg-hover);
+  transform: scale(1.02);
+}
+
+/* Гамбургер меню */
 .hamburger {
   background: none;
   border: none;
-  color: white;
-  font-size: 28px;
+  color: var(--yt-text-primary);
+  font-size: 24px;
   cursor: pointer;
   padding: 8px;
-  display: block;                 /* ← Изменили на block */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  transition: all 0.2s ease;
 }
 
-/* Боковое меню */
+.hamburger:hover {
+  background: var(--yt-bg-hover);
+}
+
+/* Боковое меню (сайдбар) */
 .sidebar {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.5);
   z-index: 200;
   display: flex;
   justify-content: flex-start;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .sidebar-content {
   width: 280px;
   height: 100%;
-  background: #141414;
+  background: var(--yt-bg-primary);
   padding: 20px;
   overflow-y: auto;
-  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.5);
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.2s ease;
+  border-right: 1px solid var(--yt-border);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 .sidebar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #333;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--yt-border);
 }
 
 .sidebar-header h3 {
   margin: 0;
-  color: white;
+  color: var(--yt-text-primary);
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: white;
-  font-size: 26px;
+  color: var(--yt-text-primary);
+  font-size: 22px;
   cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: var(--yt-bg-hover);
 }
 
 .sidebar-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 14px;
   width: 100%;
-  padding: 14px 16px;
-  color: white;
+  padding: 12px 16px;
+  color: var(--yt-text-primary);
   text-decoration: none;
-  font-size: 16px;
-  border-radius: 8px;
-  margin-bottom: 6px;
-  transition: background 0.2s;
+  font-size: 15px;
+  border-radius: 10px;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .sidebar-item:hover {
-  background: #2a2a2a;
+  background: var(--yt-bg-hover);
 }
 
 .logout {
-  color: #ff4b4b;
-  margin-top: 30px;
+  color: var(--yt-red);
+  margin-top: 20px;
+  border-top: 1px solid var(--yt-border);
+  padding-top: 16px;
 }
 
 .logout:hover {
-  background: rgba(255, 75, 75, 0.1);
+  background: rgba(244, 67, 54, 0.1);
 }
 
 /* Адаптивность */
 @media (max-width: 992px) {
   .nav-menu {
     display: none;
+  }
+  
+  .nav-container {
+    padding: 0 16px;
+  }
+  
+  .nav-logo {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 4px 0;
+  }
+  
+  .nav-container {
+    height: 52px;
+  }
+  
+  .hamburger {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+  
+  .nav-logo {
+    font-size: 16px;
+  }
+  
+  .sidebar-content {
+    width: 260px;
+  }
+  
+  .sidebar-item {
+    padding: 10px 14px;
+    font-size: 14px;
   }
 }

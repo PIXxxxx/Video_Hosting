@@ -1,16 +1,20 @@
+/* ChannelPage.css - YouTube стиль */
+
 .channel-page {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 24px 32px;
+  background: var(--yt-bg-primary);
+  min-height: 100vh;
 }
 
 .channel-header {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 32px;
   margin-bottom: 40px;
   padding-bottom: 32px;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--yt-border);
 }
 
 .channel-avatar {
@@ -18,28 +22,37 @@
   height: 128px;
   border-radius: 50%;
   object-fit: cover;
-  background: #f1f1f1;
+  background: var(--yt-bg-tertiary);
+  border: 4px solid var(--yt-accent);
 }
 
 .channel-info h1 {
-  margin: 0 0 8px;
-  font-size: 28px;
+  margin: 0 0 12px 0;
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--yt-text-primary);
+}
+
+.channel-info .subscribe-wrapper {
+  margin: 16px 0;
 }
 
 .sub-count {
-  color: #606060;
-  font-size: 15px;
-  margin: 0;
+  color: var(--yt-text-secondary);
+  font-size: 14px;
+  margin: 8px 0 0 0;
 }
 
 .channel-videos h2 {
-  font-size: 22px;
-  margin: 0 0 24px;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 24px 0;
+  color: var(--yt-text-primary);
 }
 
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 24px;
 }
 
@@ -47,9 +60,35 @@
   text-align: center;
   padding: 100px 20px;
   font-size: 18px;
-  color: #333;
+  color: var(--yt-text-secondary);
 }
 
 .error-message {
-  color: #d32f2f;
+  color: var(--yt-red);
+}
+
+@media (max-width: 768px) {
+  .channel-page {
+    padding: 16px;
+  }
+  
+  .channel-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+  
+  .channel-avatar {
+    width: 96px;
+    height: 96px;
+  }
+  
+  .channel-info h1 {
+    font-size: 24px;
+  }
+  
+  .video-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }

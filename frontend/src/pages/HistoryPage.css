@@ -1,0 +1,55 @@
+/* HistoryPage.css - YouTube стиль */
+
+.history-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  background: var(--yt-bg-primary);
+  min-height: 100vh;
+}
+
+.history-page h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 32px;
+  color: var(--yt-text-primary);
+  border-left: 4px solid var(--yt-accent);
+  padding-left: 16px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.history-list .video-card {
+  display: flex;
+  gap: 16px;
+}
+
+.history-list .thumbnail-container {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.loading-history, .empty-history {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--yt-text-secondary);
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .history-page {
+    padding: 16px;
+  }
+  
+  .history-page h1 {
+    font-size: 22px;
+  }
+  
+  .history-list .thumbnail-container {
+    width: 120px;
+  }
+}

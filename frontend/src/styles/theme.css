@@ -1,0 +1,472 @@
+/* src/styles/theme.css - YouTube стили с поддержкой тем */
+
+/* ====================== СВЕТЛАЯ ТЕМА (по умолчанию) ====================== */
+:root {
+  /* YouTube Light Theme Colors */
+  --yt-bg-primary: #ffffff;
+  --yt-bg-secondary: #f9f9f9;
+  --yt-bg-tertiary: #f1f1f1;
+  --yt-bg-card: #ffffff;
+  --yt-bg-input: #ffffff;
+  --yt-bg-hover: rgba(0, 0, 0, 0.05);
+  
+  --yt-text-primary: #0f0f0f;
+  --yt-text-secondary: #606060;
+  --yt-text-muted: #909090;
+  
+  --yt-accent: #065fd4;
+  --yt-accent-hover: #0d47a1;
+  --yt-red: #cc0000;
+  --yt-green: #2ba640;
+  --yt-gray: #aaaaaa;
+  
+  --yt-border: #e5e5e5;
+  --yt-border-dark: #d9d9d9;
+  
+  --yt-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --yt-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+  
+  --sidebar-width: 240px;
+  --header-height: 56px;
+}
+
+/* ====================== ТЁМНАЯ ТЕМА ====================== */
+[data-theme="dark"] {
+  --yt-bg-primary: #0f0f0f;
+  --yt-bg-secondary: #1a1a1a;
+  --yt-bg-tertiary: #272727;
+  --yt-bg-card: #1a1a1a;
+  --yt-bg-input: #121212;
+  --yt-bg-hover: rgba(255, 255, 255, 0.08);
+  
+  --yt-text-primary: #f1f1f1;
+  --yt-text-secondary: #aaaaaa;
+  --yt-text-muted: #909090;
+  
+  --yt-accent: #3ea6ff;
+  --yt-accent-hover: #1a73e8;
+  --yt-red: #ff4b4b;
+  --yt-green: #4caf50;
+  --yt-gray: #606060;
+  
+  --yt-border: #303030;
+  --yt-border-dark: #3f3f3f;
+  
+  --yt-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --yt-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* ====================== ГЛОБАЛЬНЫЕ СТИЛИ ====================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  background-color: var(--yt-bg-primary);
+  color: var(--yt-text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ====================== SCROLLBAR ====================== */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--yt-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--yt-gray);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--yt-text-secondary);
+}
+
+/* ====================== КНОПКИ ====================== */
+button {
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.yt-button {
+  padding: 8px 16px;
+  border-radius: 40px;
+  font-weight: 500;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.yt-button-primary {
+  background-color: var(--yt-accent);
+  color: white;
+}
+
+.yt-button-primary:hover {
+  background-color: var(--yt-accent-hover);
+  transform: translateY(-1px);
+}
+
+.yt-button-secondary {
+  background-color: var(--yt-bg-tertiary);
+  color: var(--yt-text-primary);
+  border: 1px solid var(--yt-border);
+}
+
+.yt-button-secondary:hover {
+  background-color: var(--yt-bg-hover);
+}
+
+/* ====================== КАРТОЧКИ ВИДЕО ====================== */
+.yt-video-card {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
+.yt-video-card:hover {
+  transform: translateY(-2px);
+}
+
+.yt-thumbnail-container {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  background: var(--yt-bg-tertiary);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.yt-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.yt-video-info {
+  padding: 12px 4px 0;
+}
+
+.yt-video-title {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.yt-video-meta {
+  font-size: 13px;
+  color: var(--yt-text-secondary);
+  margin-top: 4px;
+}
+
+.yt-author-link {
+  color: var(--yt-text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.yt-author-link:hover {
+  color: var(--yt-text-primary);
+}
+
+/* ====================== НАВИГАЦИЯ ====================== */
+.yt-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--yt-bg-primary);
+  border-bottom: 1px solid var(--yt-border);
+  padding: 0 16px;
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.yt-logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--yt-text-primary);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.yt-logo-icon {
+  color: var(--yt-red);
+  font-size: 28px;
+}
+
+/* ====================== ПОИСК ====================== */
+.yt-search-container {
+  flex: 1;
+  max-width: 600px;
+  margin: 0 20px;
+}
+
+.yt-search-form {
+  display: flex;
+  width: 100%;
+}
+
+.yt-search-input {
+  flex: 1;
+  padding: 8px 16px;
+  background-color: var(--yt-bg-input);
+  border: 1px solid var(--yt-border);
+  border-radius: 40px 0 0 40px;
+  color: var(--yt-text-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+.yt-search-input:focus {
+  border-color: var(--yt-accent);
+}
+
+.yt-search-button {
+  padding: 8px 20px;
+  background-color: var(--yt-bg-tertiary);
+  border: 1px solid var(--yt-border);
+  border-left: none;
+  border-radius: 0 40px 40px 0;
+  color: var(--yt-text-primary);
+  cursor: pointer;
+}
+
+/* ====================== САЙДБАР ====================== */
+.yt-sidebar {
+  position: fixed;
+  left: 0;
+  top: var(--header-height);
+  width: var(--sidebar-width);
+  height: calc(100vh - var(--header-height));
+  overflow-y: auto;
+  background-color: var(--yt-bg-primary);
+  padding: 12px 0;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 99;
+}
+
+.yt-sidebar.open {
+  transform: translateX(0);
+}
+
+.yt-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 8px 24px;
+  color: var(--yt-text-primary);
+  text-decoration: none;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.yt-sidebar-item:hover {
+  background-color: var(--yt-bg-hover);
+}
+
+/* ====================== ПЛЕЕР ====================== */
+.yt-player-container {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.yt-player {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.yt-player-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.yt-player-container:hover .yt-player-controls {
+  opacity: 1;
+}
+
+/* ====================== КОММЕНТАРИИ ====================== */
+.yt-comment {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.yt-comment-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--yt-bg-tertiary);
+  flex-shrink: 0;
+}
+
+.yt-comment-content {
+  flex: 1;
+}
+
+.yt-comment-author {
+  font-weight: 500;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.yt-comment-text {
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+/* ====================== ФОРМЫ ====================== */
+.yt-form-group {
+  margin-bottom: 20px;
+}
+
+.yt-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.yt-input {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: var(--yt-bg-input);
+  border: 1px solid var(--yt-border);
+  border-radius: 8px;
+  color: var(--yt-text-primary);
+  font-size: 14px;
+}
+
+.yt-input:focus {
+  outline: none;
+  border-color: var(--yt-accent);
+}
+
+.yt-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* ====================== ТЕГИ-ЧИПСЫ ====================== */
+.yt-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--yt-bg-input);
+  border: 1px solid var(--yt-border);
+  border-radius: 8px;
+  min-height: 42px;
+}
+
+.yt-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--yt-accent);
+  color: #0f0f0f;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.yt-tag-remove {
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.yt-tag-remove:hover {
+  opacity: 1;
+}
+
+.yt-tag-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--yt-text-primary);
+  font-size: 14px;
+  outline: none;
+  min-width: 120px;
+}
+
+/* ====================== АВАТАР ====================== */
+.yt-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.yt-avatar-large {
+  width: 80px;
+  height: 80px;
+}
+
+/* ====================== КНОПКА ПЕРЕКЛЮЧЕНИЯ ТЕМЫ ====================== */
+.yt-theme-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.yt-theme-toggle:hover {
+  background-color: var(--yt-bg-hover);
+}
+
+/* ====================== АДАПТИВНОСТЬ ====================== */
+@media (max-width: 768px) {
+  :root {
+    --sidebar-width: 100%;
+  }
+  
+  .yt-search-container {
+    margin: 0 8px;
+  }
+  
+  .yt-video-title {
+    font-size: 14px;
+  }
+}
