@@ -49,6 +49,11 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 def read_root():
     return {"message": "Video Hosting API is running", "db": "SQLite"}
 
+def format_tags(tags_str: str | None) -> list[str]:
+    if not tags_str:
+        return []
+    return [tag.strip() for tag in tags_str.split(',') if tag.strip()]
+
 @app.post("/api/register", response_model=schemas.UserOut)
 def register(
     user: schemas.UserCreate,
@@ -131,7 +136,7 @@ def get_my_videos(
             "views": v.views,
             "author_id": v.author_id,
             "author": v.author.username if v.author else None,
-            "tags": v.tags,
+            "tags": format_tags(v.tags),
             "custom_thumbnail_path": v.custom_thumbnail_path
         })
     
@@ -188,72 +193,121 @@ async def upload_video(
         print(f"❌ Ошибка: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/video/{video_id}")
 def get_video(
     video_id: int,
     current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    """Получение информации о видео"""
+    """Получение информации о видео БЕЗ автоматического увеличения просмотров"""
     try:
         print(f"🔍 Запрос видео {video_id}")
-        
+
         video = db.query(models.Video).filter(models.Video.id == video_id).first()
-        
-        
+
         if not video:
             print(f"❌ Видео {video_id} не найдено")
             raise HTTPException(status_code=404, detail="Видео не найдено")
-        
+
         if video.is_private and (current_user is None or current_user.id != video.author_id):
             raise HTTPException(status_code=403, detail="Это приватное видео. Доступ только для автора.")
 
-        video.views += 1
-        db.commit()
+        # Формируем URL миниатюры
+        thumbnail_url = f"http://localhost:8000/media/thumbnails/{video.id}.jpg"
+        if video.custom_thumbnail_path:
+            thumbnail_url = f"http://localhost:8000/media/{video.custom_thumbnail_path}"
 
-        # Добавляем/обновляем запись в истории просмотров (только для авторизованных)
+        video_data = {
+            "id": video.id,
+            "title": video.title,
+            "description": video.description or "",
+            "tags": format_tags(video.tags) if video.tags else [],
+            "file_path": video.file_path,
+            "hls_playlist_path": video.hls_playlist_path,
+            "upload_date": str(video.upload_date),
+            "is_processed": video.is_processed,
+            "views": video.views,                    # просто возвращаем текущее значение
+            "author_id": video.author_id,
+            "author": video.author.username if video.author else None,
+            "thumbnail": thumbnail_url,
+            "is_private": video.is_private,
+            "custom_thumbnail_path": video.custom_thumbnail_path
+        }
+
+        print(f"✅ Видео {video_id} возвращено: {video.title} | Просмотры: {video.views}")
+        return video_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Ошибка получения видео {video_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/api/video/{video_id}/view")
+def increment_video_view(
+    video_id: int,
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Увеличение счётчика просмотров (вызывается один раз с фронтенда)"""
+    try:
+        video = db.query(models.Video).filter(models.Video.id == video_id).first()
+        if not video:
+            raise HTTPException(status_code=404, detail="Видео не найдено")
+
+        # Защита от приватных видео
+        if video.is_private and (current_user is None or current_user.id != video.author_id):
+            raise HTTPException(status_code=403, detail="Доступ запрещён")
+
+        # === Умная защита от множественных запросов ===
+        should_increment = True
+
+        if current_user:
+            # Не считаем повторный просмотр, если пользователь смотрел видео меньше 30 секунд назад
+            recent_view = db.query(models.WatchHistory).filter(
+                models.WatchHistory.user_id == current_user.id,
+                models.WatchHistory.video_id == video_id,
+                models.WatchHistory.watched_at > datetime.utcnow() - timedelta(seconds=30)
+            ).first()
+
+            if recent_view:
+                should_increment = False
+                print(f"⏭️ Просмотр видео {video_id} уже был засчитан недавно")
+
+        if should_increment:
+            video.views = (video.views or 0) + 1
+            print(f"📈 Просмотр видео {video_id} засчитан. Новое количество: {video.views}")
+
+        # Обновляем/создаём запись в истории просмотров
         if current_user:
             existing = db.query(models.WatchHistory).filter(
                 models.WatchHistory.user_id == current_user.id,
                 models.WatchHistory.video_id == video_id
             ).first()
 
+            now = datetime.utcnow()
+
             if existing:
-                existing.watched_at = datetime.utcnow()
+                existing.watched_at = now
             else:
-                history_entry = models.WatchHistory(
+                db.add(models.WatchHistory(
                     user_id=current_user.id,
-                    video_id=video_id
-                )
-                db.add(history_entry)
+                    video_id=video_id,
+                    watched_at=now
+                ))
 
-            db.commit()  # коммитим изменения в историю
+        db.commit()
 
-        # Формируем URL миниатюры
-        thumbnail_url = f"http://localhost:8000/media/thumbnails/{video.id}.jpg"
-
-        video_data = {
-            "id": video.id,
-            "title": video.title,
-            "description": video.description,
-            "file_path": video.file_path,
-            "hls_playlist_path": video.hls_playlist_path,
-            "upload_date": str(video.upload_date),
-            "is_processed": video.is_processed,
-            "views": video.views,
-            "author_id": video.author_id,
-            "author": video.author.username if video.author else None,
-            "thumbnail": thumbnail_url,
-            "is_private": video.is_private
+        return {
+            "message": "Просмотр засчитан" if should_increment else "Просмотр уже был засчитан ранее",
+            "views": video.views
         }
 
-        print(f"✅ Видео {video_id} найдено: {video.title}")
-        return video_data
-        
     except HTTPException:
         raise
     except Exception as e:
-        print(f"❌ Ошибка получения видео {video_id}: {str(e)}")
+        print(f"❌ Ошибка при засчёте просмотра видео {video_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
 @app.get("/api/videos")

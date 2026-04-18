@@ -1,14 +1,21 @@
 // src/components/VideoPlayer.tsx
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Hls from 'hls.js';
 import './VideoPlayer.css';
 
 interface VideoPlayerProps {
-  src: string;
+  hlsSrc?: string;
+  mp4Src?: string;
   poster?: string;
+  videoId?: number;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, poster }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({
+  hlsSrc,
+  mp4Src,
+  poster,
+  videoId,
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
 
@@ -17,66 +24,118 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, poster }) => {
   const [duration, setDuration] = useState(0);
   const [qualities, setQualities] = useState<{ label: string; level: number }[]>([]);
   const [currentQuality, setCurrentQuality] = useState('Auto');
-  const [showMenu, setShowMenu] = useState(false);
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
+  const formatTime = (seconds: number): string => {
+    if (!seconds || isNaN(seconds)) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Инициализация HLS
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !hlsSrc) return;
 
-    let hls: Hls | null = null;
-
-    // Инициализация HLS
-    if (Hls.isSupported()) {
-      hls = new Hls({
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
-      });
-
-      hls.loadSource(src);
-      hls.attachMedia(video);
-      hlsRef.current = hls;
-
-      // Получаем список качеств
-      hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
-        const list = data.levels.map((level, index) => ({
-          label: level.height ? `${level.height}p` : 'Auto',
-          level: index,
-        }));
-        setQualities(list);
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = src;
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
     }
 
-    // Обновление времени
+    setErrorMsg('');
+    setQualities([]);
+    setCurrentQuality('Auto');
+
+    const hls = new Hls({
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      enableWorker: true,
+    });
+
+    hls.loadSource(hlsSrc);
+    hls.attachMedia(video);
+    hlsRef.current = hls;
+
+    // Правильное получение списка качеств
+    hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+    const qualityList: { label: string; level: number; height?: number }[] = [];
+    
+    data.levels.forEach((level, index) => {
+      let label = 'Auto';
+      
+      if (level.height) {
+        label = `${level.height}p`;
+      } else if (level.attrs?.RESOLUTION) {
+        // Извлекаем высоту из RESOLUTION (например "1920x1080")
+        const height = level.attrs.RESOLUTION.split('x')[1];
+        label = `${height}p`;
+      } else if (level.bitrate) {
+        label = `${Math.round(level.bitrate / 1000)}k`;
+      }
+      
+      qualityList.push({ 
+        label, 
+        level: index,
+        height: level.height || (level.attrs?.RESOLUTION ? parseInt(level.attrs.RESOLUTION.split('x')[1]) : 0)
+      });
+    });
+    
+    // Сортируем по качеству (от высокого к низкому)
+    qualityList.sort((a, b) => (b.height || 0) - (a.height || 0));
+    
+    setQualities(qualityList);
+    console.log('✅ Доступные качества:', qualityList);
+  });
+
+    hls.on(Hls.Events.ERROR, (_, data) => {
+      if (data.fatal) {
+        setErrorMsg('HLS не загрузился. Используем оригинальное видео.');
+        if (mp4Src) video.src = mp4Src;
+      }
+    });
+
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
       setDuration(video.duration || 0);
     };
 
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleTimeUpdate);
-    video.addEventListener('play', () => setIsPlaying(true));
-    video.addEventListener('pause', () => setIsPlaying(false));
+    video.addEventListener('play', handlePlay);
+    video.addEventListener('pause', handlePause);
 
     return () => {
-      if (hls) hls.destroy();
+      if (hlsRef.current) hlsRef.current.destroy();
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleTimeUpdate);
+      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('pause', handlePause);
     };
-  }, [src]);
+  }, [hlsSrc, mp4Src]);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(async () => {
     const video = videoRef.current;
     if (!video) return;
-    isPlaying ? video.pause() : video.play();
-  };
+
+    try {
+      if (isPlaying) {
+        video.pause();
+      } else {
+        await video.play();
+      }
+    } catch (err: any) {
+      console.warn('Play failed:', err.message);
+    }
+  }, [isPlaying]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const video = videoRef.current;
-    if (video) {
-      video.currentTime = Number(e.target.value);
-    }
+    if (video) video.currentTime = Number(e.target.value);
   };
 
   const changeQuality = (level: number) => {
@@ -85,69 +144,80 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, poster }) => {
       const selected = qualities.find(q => q.level === level);
       if (selected) setCurrentQuality(selected.label);
     }
-    setShowMenu(false);
+    setShowQualityMenu(false);
   };
 
-  const setAuto = () => {
-    if (hlsRef.current) hlsRef.current.currentLevel = -1;
+  const setAutoQuality = () => {
+    if (hlsRef.current) {
+      hlsRef.current.currentLevel = -1;
+    }
     setCurrentQuality('Auto');
-    setShowMenu(false);
+    setShowQualityMenu(false);
   };
 
   return (
     <div className="custom-player">
-      <video
-        ref={videoRef}
-        poster={poster}
-        className="video"
-        onClick={togglePlay}
-      />
+      {errorMsg && <div className="player-error">{errorMsg}</div>}
 
-      {/* Прогресс-бар */}
+      <div className="video-container" onClick={togglePlay}>
+        <video
+          ref={videoRef}
+          poster={poster}
+          className="video"
+          playsInline
+        />
+      </div>
+
       <div className="progress-container">
         <input
           type="range"
           min="0"
-          max={duration}
+          max={duration || 0}
           value={currentTime}
           onChange={handleSeek}
           className="progress-bar"
         />
       </div>
 
-      {/* Нижняя панель управления */}
-      <div className="controls-bar">
+      <div className="controls-bar" onClick={e => e.stopPropagation()}>
         <button className="btn play-btn" onClick={togglePlay}>
           {isPlaying ? '❚❚' : '▶'}
         </button>
 
         <span className="time">
-          {Math.floor(currentTime)} / {Math.floor(duration)}
+          {formatTime(currentTime)} / {formatTime(duration || 0)}
         </span>
 
-        {/* Меню качества */}
-        <div className="quality-wrapper">
-          <button className="quality-btn" onClick={() => setShowMenu(!showMenu)}>
-            {currentQuality} ▼
-          </button>
+        {qualities.length > 0 && (
+          <div className="quality-wrapper">
+            <button
+              className="quality-btn"
+              onClick={() => setShowQualityMenu(!showQualityMenu)}
+            >
+              {currentQuality} ▼
+            </button>
 
-          {showMenu && (
-            <div className="quality-menu">
-              <div className="quality-option" onClick={setAuto}>Auto</div>
-              {qualities.map((q, i) => (
-                <div
-                  key={i}
-                  className="quality-option"
-                  onClick={() => changeQuality(q.level)}
-                >
-                  {q.label}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+            {showQualityMenu && (
+              <div className="quality-menu">
+                <div className="quality-option" onClick={setAutoQuality}>Auto</div>
+                {qualities.map((q) => (
+                  <div
+                    key={q.level}
+                    className="quality-option"
+                    onClick={() => changeQuality(q.level)}
+                  >
+                    {q.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-        <button className="btn" onClick={() => videoRef.current?.requestFullscreen()}>
+        <button
+          className="btn fullscreen-btn"
+          onClick={() => videoRef.current?.requestFullscreen()}
+        >
           ⛶
         </button>
       </div>

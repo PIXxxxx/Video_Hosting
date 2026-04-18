@@ -1,11 +1,16 @@
+/* VideoWatchPage.css */
+
 .video-watch-page {
-  padding: 20px;
+  background: #0f0f0f;
+  min-height: 100vh;
+  padding: 24px 32px;
+  color: #f1f1f1;
 }
 
 .main-layout {
   display: flex;
-  gap: 24px;
-  max-width: 1400px;
+  gap: 32px;
+  max-width: 1800px;
   margin: 0 auto;
 }
 
@@ -17,18 +22,25 @@
 .right-column {
   flex: 1;
   min-width: 340px;
+  position: sticky;
+  top: 24px;
+  align-self: flex-start;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
 }
 
+/* ====================== ПЛЕЕР ====================== */
 .video-player-wrapper {
   position: relative;
   width: 100%;
   padding-top: 56.25%; /* 16:9 */
-  background: black;
-  border-radius: 12px;
+  background: #000;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-.video-player-wrapper video {
+.custom-player {
   position: absolute;
   top: 0;
   left: 0;
@@ -36,67 +48,242 @@
   height: 100%;
 }
 
+.video-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.video-container video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  background: #000;
+}
+
+/* Прогресс-бар */
+.progress-container {
+  position: absolute;
+  bottom: 70px;
+  left: 16px;
+  right: 16px;
+  z-index: 15;
+}
+
+.progress-bar {
+  width: 100%;
+  accent-color: #3ea6ff;
+  cursor: pointer;
+  height: 5px;
+  border-radius: 3px;
+}
+
+/* Панель управления */
+.controls-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.6));
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 14px;
+  z-index: 20;
+}
+
+.btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.75rem;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn:hover {
+  background: rgba(255,255,255,0.15);
+  transform: scale(1.05);
+}
+
+.play-btn {
+  font-size: 2.1rem;
+}
+
+.time {
+  color: #ddd;
+  font-size: 0.96rem;
+  font-family: monospace;
+  min-width: 110px;
+  text-align: center;
+}
+
+/* Качество видео */
+.quality-wrapper {
+  margin-left: auto;
+  position: relative;
+}
+
+.quality-btn {
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.92rem;
+}
+
+.quality-menu {
+  position: absolute;
+  bottom: 110%;
+  right: 0;
+  background: #272727;
+  border-radius: 8px;
+  padding: 8px 0;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  z-index: 30;
+  min-width: 140px;
+}
+
+.quality-option {
+  padding: 10px 18px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.quality-option:hover {
+  background: #3ea6ff;
+  color: #000;
+}
+
+/* ====================== ИНФОРМАЦИЯ О ВИДЕО ====================== */
 .video-info {
-  margin-top: 20px;
+  margin-top: 28px;
 }
 
 .video-info h1 {
-  margin: 0 0 12px;
-  font-size: 1.8rem;
-}
-
-.meta {
-  color: #aaa;
-  font-size: 0.95rem;
+  font-size: 1.65rem;
+  font-weight: 600;
+  line-height: 1.35;
   margin-bottom: 12px;
 }
 
-.author {
-  color: #ccc;
-  margin: 8px 0;
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #aaaaaa;
+  font-size: 0.95rem;
+  margin-bottom: 20px;
 }
 
-.description {
-  color: #ddd;
-  line-height: 1.6;
-  margin: 16px 0;
-}
-
+/* Лайки — улучшенный дизайн */
 .like-buttons {
   display: flex;
-  gap: 16px;
-  margin: 20px 0;
+  gap: 12px;
+  margin: 22px 0;
 }
 
 .like-btn {
-  padding: 10px 20px;
-  background: #222;
-  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: #272727;
+  color: #f1f1f1;
   border: none;
-  border-radius: 20px;
-  cursor: pointer;
+  border-radius: 50px;
   font-size: 1rem;
-  transition: all 0.2s;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
 }
 
 .like-btn:hover {
-  background: #333;
+  background: #383838;
+  transform: translateY(-2px);
 }
 
 .like-btn.active {
-  background: #0066ff;
+  background: #3ea6ff;
+  color: #0f0f0f;
+  font-weight: 600;
 }
 
+.like-btn:active {
+  transform: scale(0.96);
+}
+
+/* Кнопка редактировать */
 .edit-link {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   margin-top: 16px;
-  color: #4da6ff;
+  padding: 12px 24px;
+  background: #272727;
+  color: #3ea6ff;
+  text-decoration: none;
+  border-radius: 50px;
+  font-weight: 500;
+  transition: all 0.25s ease;
+}
+
+.edit-link:hover {
+  background: #3a3a3a;
+  color: #5cb8ff;
+  transform: translateX(6px);
+}
+
+/* Автор и подписка */
+.author-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 20px 0;
+  border-top: 1px solid #272727;
+  border-bottom: 1px solid #272727;
+  margin: 20px 0;
+}
+
+.author {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.author-link {
+  color: #3ea6ff;
   text-decoration: none;
 }
 
+.author-link:hover {
+  text-decoration: underline;
+}
+
+/* Описание */
+.description {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 12px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  margin: 24px 0;
+}
+
+/* ====================== РЕКОМЕНДАЦИИ ====================== */
 .related-section h2 {
-  margin: 0 0 16px;
-  font-size: 1.3rem;
+  font-size: 1.35rem;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #272727;
 }
 
 .related-list {
@@ -105,12 +292,37 @@
   gap: 16px;
 }
 
-/* Адаптив */
+/* Адаптивность */
+@media (max-width: 1100px) {
+  .main-layout {
+    gap: 24px;
+  }
+}
+
 @media (max-width: 992px) {
   .main-layout {
     flex-direction: column;
   }
+  
   .right-column {
-    min-width: 100%;
+    position: static;
+    max-height: none;
+    margin-top: 40px;
+  }
+  
+  .related-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .video-watch-page {
+    padding: 16px 20px;
+  }
+  
+  .video-info h1 {
+    font-size: 1.4rem;
   }
 }

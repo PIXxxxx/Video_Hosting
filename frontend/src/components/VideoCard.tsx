@@ -92,13 +92,17 @@ const VideoCard: React.FC<VideoCardProps> = ({
       <div className="video-info">
         <h3>{title}</h3>
         <p>
-          <Link 
-            to={`/channel/${author_id}`} 
+          {/* Исправлено: используем span + onClick вместо вложенного Link */}
+          <span 
             className="author-link"
-            onClick={(e) => e.stopPropagation()}   // ← Важно! Останавливаем всплытие
+            onClick={(e) => {
+              e.stopPropagation();           // предотвращаем переход по видео
+              window.location.href = `/channel/${author_id}`; // ручной переход
+            }}
+            style={{ cursor: 'pointer', textDecoration: 'underline' }}
           >
             {author || 'Аноним'}
-          </Link>
+          </span>
         </p>
         <p>{views} просмотров • {new Date(upload_date).toLocaleDateString()}</p>
       </div>

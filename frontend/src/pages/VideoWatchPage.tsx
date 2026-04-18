@@ -9,6 +9,7 @@ import VideoPlayer from '../components/VideoPlayer';
 import { useAuth } from '../context/AuthContext';
 import './VideoWatchPage.css';
 
+
 interface Video {
   id: number;
   title: string;
@@ -35,7 +36,7 @@ const VideoWatchPage: React.FC = () => {
   const [dislikes, setDislikes] = useState(0);
   const [userLikeStatus, setUserLikeStatus] = useState<boolean | null>(null);
 
-  // Загрузка данных
+  // Загрузка данных + засчёт просмотра
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -45,12 +46,15 @@ const VideoWatchPage: React.FC = () => {
           axios.get(`http://localhost:8000/api/video/${id}/likes`)
         ]);
 
-        setVideo(videoRes.data);
+        const videoData = videoRes.data;
+        setVideo(videoData);
+        
         const filtered = relatedRes.data.filter((v: Video) => v.id !== Number(id));
         setRelatedVideos(filtered.slice(0, 10));
 
         setLikes(likesRes.data.likes);
         setDislikes(likesRes.data.dislikes);
+
         setLoading(false);
       } catch (err) {
         console.error(err);
@@ -86,18 +90,21 @@ const VideoWatchPage: React.FC = () => {
           <div className="video-player-wrapper">
             {video.hls_playlist_path ? (
               <VideoPlayer 
-                src={`http://localhost:8000/${video.hls_playlist_path.replace(/\\/g, '/')}`}
+                hlsSrc={`http://localhost:8000/${video.hls_playlist_path.replace(/\\/g, '/')}`}
+                mp4Src={video.file_path 
+                  ? `http://localhost:8000/${video.file_path.replace(/\\/g, '/')}` 
+                  : undefined}
                 poster={`http://localhost:8000/media/thumbnails/${video.id}.jpg`}
+                videoId={Number(id)}
               />
             ) : video.file_path ? (
-              <video
-                controls
-                playsInline
+              <VideoPlayer 
+                mp4Src={`http://localhost:8000/${video.file_path.replace(/\\/g, '/')}`}
                 poster={`http://localhost:8000/media/thumbnails/${video.id}.jpg`}
-                src={`http://localhost:8000/${video.file_path.replace(/\\/g, '/')}`}
+                videoId={Number(id)}
               />
             ) : (
-              <p>Видео ещё обрабатывается или недоступно</p>
+              <p>Видео ещё обрабатывается...</p>
             )}
           </div>
 
@@ -112,7 +119,6 @@ const VideoWatchPage: React.FC = () => {
             </div>
 
             <div className="author-block">
-              {/* Исправленная кликабельная ссылка на автора */}
               <p className="author">
                 Автор: {' '}
                 <Link 

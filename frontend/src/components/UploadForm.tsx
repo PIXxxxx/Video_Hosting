@@ -15,53 +15,59 @@ const UploadForm = () => {
     const { user } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!file) {
-            setError('Выберите файл для загрузки');
-            return;
+    e.preventDefault();
+    if (!file) {
+        setError('Выберите файл для загрузки');
+        return;
+    }
+
+    setUploading(true);
+    setMessage('');
+    setError('');
+    setUploadedVideo(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('tags', tags);
+
+    try {
+        // Явно передаём токен в заголовке
+        const response = await axios.post('http://localhost:8000/api/upload/', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`   // ← Добавили это
+            },
+        });
+        
+        setMessage('Видео успешно загружено!');
+        setUploadedVideo({
+            id: response.data.video_id,
+            title: response.data.title
+        });
+        
+        // Очищаем форму
+        setTitle('');
+        setDescription('');
+        setTags('');
+        setFile(null);
+        
+        const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+        
+    } catch (error: any) {
+        console.error('Ошибка загрузки:', error);
+        setError(error.response?.data?.detail || 'Ошибка при загрузке видео');
+        
+        // Если 401 — возможно токен истёк
+        if (error.response?.status === 401) {
+            setError('Сессия истекла. Пожалуйста, войдите заново.');
         }
-
-        setUploading(true);
-        setMessage('');
-        setError('');
-        setUploadedVideo(null);
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('title', title);
-        formData.append('description', description);
-        formData.append('tags', tags);
-
-        try {
-            const response = await axios.post('http://localhost:8000/api/upload/', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
-            
-            setMessage('Видео успешно загружено!');
-            setUploadedVideo({
-                id: response.data.video_id,
-                title: response.data.title
-            });
-            
-            // Очищаем форму
-            setTitle('');
-            setDescription('');
-            setTags('');
-            setFile(null);
-            
-            // Очищаем input file
-            const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-            if (fileInput) fileInput.value = '';
-            
-        } catch (error: any) {
-            console.error('Ошибка загрузки:', error);
-            setError(error.response?.data?.detail || 'Ошибка при загрузке видео');
-        } finally {
-            setUploading(false);
-        }
-    };
+    } finally {
+        setUploading(false);
+    }
+};
 
     if (!user) {
         return (
