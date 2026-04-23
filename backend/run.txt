@@ -1,6 +1,6 @@
 Терминал 1: docker-compose up -d
 Терминал 2: Из папки backend uvicorn main:app --reload
-Терминал 3: Из папки backend celery -A celery_app worker --loglevel=info --pool=threads
+Терминал 3: Из папки backend celery -A celery_app worker --loglevel=info --pool=solo
 Терминал 4: Из папки frontend  npm start
 
 cd frontend

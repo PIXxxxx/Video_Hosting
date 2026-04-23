@@ -10,8 +10,6 @@ import models
 import schemas
 from database import get_db
 
-# Генерируем нормальный секретный ключ (сделайте один раз и сохраните)
-# Для production используйте переменную окружения
 SECRET_KEY = "your-super-secret-key-change-this-to-something-very-long-and-random-123456789"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30

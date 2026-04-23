@@ -45,6 +45,35 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.mount("/media", StaticFiles(directory="media"), name="media")
 
+# TODO : Заменить return
+def video_to_dict(
+        video: models.Video, 
+        include_thumbnail: bool = False, 
+        base_url: str = "http://localhost:8000") -> dict:
+    """Конвертирует объект Video в словарь с нужными полями"""
+    result = {
+        "id": video.id,
+        "title": video.title,
+        "description": video.description or "",
+        "file_path": video.file_path,
+        "hls_playlist_path": video.hls_playlist_path,
+        "upload_date": str(video.upload_date),
+        "is_processed": video.is_processed,
+        "views": video.views,
+        "author_id": video.author_id,
+        "author": video.author.username if video.author else None,
+        "tags": format_tags(video.tags),
+        "custom_thumbnail_path": video.custom_thumbnail_path
+    }
+    
+    if include_thumbnail:
+        if video.custom_thumbnail_path:
+            result["thumbnail"] = f"{base_url}/media/{video.custom_thumbnail_path}"
+        else:
+            result["thumbnail"] = f"{base_url}/media/thumbnails/{video.id}.jpg"
+    
+    return result
+
 @app.get("/")
 def read_root():
     return {"message": "Video Hosting API is running", "db": "SQLite"}
@@ -122,27 +151,11 @@ def get_my_videos(
     videos = db.query(models.Video).filter(
         models.Video.author_id == current_user.id
     ).order_by(models.Video.upload_date.desc()).all()
-    # todo: оптимизировать код "id": v.id
-    result = []
-    for v in videos:
-        result.append
-        ({  "id": v.id,
-            "title": v.title,
-            "description": v.description,
-            "file_path": v.file_path,
-            "hls_playlist_path": v.hls_playlist_path,
-            "upload_date": str(v.upload_date),
-            "is_processed": v.is_processed,
-            "views": v.views,
-            "author_id": v.author_id,
-            "author": v.author.username if v.author else None,
-            "tags": format_tags(v.tags),
-            "custom_thumbnail_path": v.custom_thumbnail_path
-        })
-    
-    return result
 
-# ========== ВИДЕО ==========
+    # TODO: оптимизировать код "id": v.id
+
+    result = []
+    return [video_to_dict(v) for v in videos]
 
 @app.post("/api/upload/")
 async def upload_video(
@@ -159,8 +172,9 @@ async def upload_video(
         
         if not file.content_type.startswith('video/'):
             raise HTTPException(status_code=400, detail="Файл должен быть видео")
-        
+        # возможный баг, если расширение не в нижнем регистре или двойное расширение (.tar.gz)
         file_extension = os.path.splitext(file.filename)[1] # TODO: possible bug!!!
+        
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         file_path = os.path.join("uploads", unique_filename)
         
@@ -218,22 +232,9 @@ def get_video(
         if video.custom_thumbnail_path:
             thumbnail_url = f"http://localhost:8000/media/{video.custom_thumbnail_path}"
 
-        video_data = {
-            "id": video.id,
-            "title": video.title,
-            "description": video.description or "",
-            "tags": format_tags(video.tags) if video.tags else [],
-            "file_path": video.file_path,
-            "hls_playlist_path": video.hls_playlist_path,
-            "upload_date": str(video.upload_date),
-            "is_processed": video.is_processed,
-            "views": video.views,                    # просто возвращаем текущее значение
-            "author_id": video.author_id,
-            "author": video.author.username if video.author else None,
-            "thumbnail": thumbnail_url,
-            "is_private": video.is_private,
-            "custom_thumbnail_path": video.custom_thumbnail_path
-        }
+        video_data = video_to_dict(video)
+        video_data["thumbnail"] = thumbnail_url
+        video_data["is_private"] = video.is_private
 
         print(f"✅ Видео {video_id} возвращено: {video.title} | Просмотры: {video.views}")
         return video_data
@@ -256,15 +257,12 @@ def increment_video_view(
         if not video:
             raise HTTPException(status_code=404, detail="Видео не найдено")
 
-        # Защита от приватных видео
         if video.is_private and (current_user is None or current_user.id != video.author_id):
             raise HTTPException(status_code=403, detail="Доступ запрещён")
 
-        # === Умная защита от множественных запросов ===
         should_increment = True
 
         if current_user:
-            # Не считаем повторный просмотр, если пользователь смотрел видео меньше 30 секунд назад
             recent_view = db.query(models.WatchHistory).filter(
                 models.WatchHistory.user_id == current_user.id,
                 models.WatchHistory.video_id == video_id,
@@ -324,27 +322,8 @@ def get_videos(
         result = []
         
         for v in videos:
-            # TODO: избавиться от ""http://localhost:8000/" возможно, можно просто /media/...
-            # TODO: отрефакторить?
-            thumbnail_url = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
-            custom_thumbnail = getattr(v, 'custom_thumbnail_path', None)
-            if custom_thumbnail:
-                thumbnail_url = f"http://localhost:8000/media/{custom_thumbnail}"
-            
-            # TODO: вынести в функцию?
-            result.append({
-                "id": v.id,
-                "title": v.title,
-                "description": v.description or "",
-                "file_path": v.file_path,
-                "hls_playlist_path": v.hls_playlist_path,
-                "upload_date": v.upload_date.isoformat() if v.upload_date else None,
-                "is_processed": v.is_processed,
-                "views": v.views,
-                "author_id": v.author_id,
-                "author": getattr(v.author, 'username', None) if v.author else None,
-                "thumbnail": thumbnail_url
-            })
+            video_dict = video_to_dict(v, include_thumbnail=True)
+            result.append(video_dict)
         
         return result
     
@@ -359,15 +338,11 @@ def get_videos_count(db: Session = Depends(get_db)):
     count = db.query(models.Video).count()
     return {"count": count}
 
-# ────────────────────────────────────────────────
-# Профиль пользователя / канал
-# ────────────────────────────────────────────────
-
 @app.get("/api/channel/{user_id}")
-def get_channel(user_id: int, db: Session = Depends(get_db)):
-    """
-    Получить информацию о канале пользователя + его видео
-    """
+def get_channel(
+    user_id: int, 
+    db: Session = Depends(get_db)
+    ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
@@ -382,24 +357,10 @@ def get_channel(user_id: int, db: Session = Depends(get_db)):
 
     video_list = []
     for v in videos:
-        if v.custom_thumbnail_path:
-            thumbnail = f"http://localhost:8000/media/{v.custom_thumbnail_path}"
-        else:
-            thumbnail = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
-
-        video_list.append({
-            "id": v.id,
-            "title": v.title,
-            "description": v.description or "",
-            "views": v.views,
-            "upload_date": v.upload_date.isoformat() if v.upload_date else None,
-            "author": user.username,
-            "author_id": user.id,
-            "thumbnail": thumbnail,   
-            "file_path": v.file_path,
-            "hls_playlist_path": v.hls_playlist_path,
-            "is_processed": v.is_processed,
-        })
+        video_dict = video_to_dict(v, include_thumbnail=True)
+        # Добавляем специфичные для канала поля
+        video_dict["author"] = user.username  # перезаписываем автора
+        video_list.append(video_dict)
 
     return {
         "id": user.id,
@@ -450,25 +411,21 @@ async def upload_custom_thumbnail(
     if not video:
         raise HTTPException(404, "Видео не найдено")
     
-    # Сохраняем файл
     ext = thumbnail.filename.split('.')[-1]
     filename = f"custom_thumb_{video_id}.{ext}"
     save_path = f"media/thumbnails/{filename}"
     
-    # Создаем папку если нет
     os.makedirs("media/thumbnails", exist_ok=True)
     
     with open(save_path, "wb") as f:
         shutil.copyfileobj(thumbnail.file, f)
     
-    # 👈 СОХРАНЯЕМ ПУТЬ В БАЗУ ДАННЫХ
     video.custom_thumbnail_path = f"thumbnails/{filename}"
     db.commit()
-    db.refresh(video)  # Обновляем объект
+    db.refresh(video)
     
     print(f"✅ Путь к обложке сохранен в БД: {video.custom_thumbnail_path}")
     
-    # Возвращаем полную информацию
     return { 
         "message": "Обложка обновлена",
         "custom_thumbnail_path": video.custom_thumbnail_path,
@@ -486,7 +443,6 @@ def delete_video(
     if not video or video.author_id != current_user.id:
         raise HTTPException(403, "Вы не автор этого видео")
     
-    # Удаляем все файлы
     try:
         if video.file_path and os.path.exists(video.file_path):
             os.remove(video.file_path)
@@ -527,18 +483,16 @@ def search(
     
     result = []
     for v in videos:
-        thumbnail_url = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
-        if v.custom_thumbnail_path:
-            thumbnail_url = f"http://localhost:8000/media/{v.custom_thumbnail_path}"
-        
+        video_dict = video_to_dict(v, include_thumbnail=True)
+        # Оставляем только нужные поля для поиска
         result.append({
-            "id": v.id,
-            "title": v.title,
-            "author": v.author.username,
-            "author_id": v.author_id,
-            "thumbnail": thumbnail_url,
-            "views": v.views,
-            "upload_date": v.upload_date.isoformat()
+            "id": video_dict["id"],
+            "title": video_dict["title"],
+            "author": video_dict["author"],
+            "author_id": video_dict["author_id"],
+            "thumbnail": video_dict["thumbnail"],
+            "views": video_dict["views"],
+            "upload_date": video_dict["upload_date"]
         })
     
     return result
@@ -577,10 +531,8 @@ def get_likes(video_id: int, db: Session = Depends(get_db)):
     return {"likes": like_count, "dislikes": dislike_count}
 
 
-# === КОММЕНТАРИИ ===
 @app.get("/api/video/{video_id}/comments")
 def get_comments(video_id: int, db: Session = Depends(get_db)):
-    # Находим все корневые комментарии
     root_comments = (
         db.query(models.Comment)
         .filter(
@@ -593,7 +545,6 @@ def get_comments(video_id: int, db: Session = Depends(get_db)):
 
     result = []
     for comment in root_comments:
-        # Подгружаем все ответы на этот комментарий
         replies_query = (
             db.query(models.Comment)
             .filter(models.Comment.parent_id == comment.id)
@@ -701,20 +652,16 @@ def get_my_videos(
     
     result = []
     for v in videos:
-        # Правильная логика выбора превью
-        if v.custom_thumbnail_path:
-            thumbnail = f"http://localhost:8000/media/{v.custom_thumbnail_path}"
-        else:
-            thumbnail = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
-        
+        video_dict = video_to_dict(v, include_thumbnail=True)
+        # Убираем лишние поля
         result.append({
-            "id": v.id,
-            "title": v.title,
-            "description": v.description or "",
-            "views": v.views,
-            "upload_date": v.upload_date.isoformat() if v.upload_date else None,
-            "thumbnail": thumbnail,           # ← самое важное
-            "is_processed": v.is_processed
+            "id": video_dict["id"],
+            "title": video_dict["title"],
+            "description": video_dict["description"],
+            "views": video_dict["views"],
+            "upload_date": video_dict["upload_date"],
+            "thumbnail": video_dict["thumbnail"],
+            "is_processed": video_dict["is_processed"]
         })
     
     return result
@@ -739,18 +686,14 @@ def get_watch_history(
         video = h.video
         if not video:
             continue
-            
-        if video.custom_thumbnail_path:
-            thumbnail = f"http://localhost:8000/media/{video.custom_thumbnail_path}"
-        else:
-            thumbnail = f"http://localhost:8000/media/thumbnails/{video.id}.jpg"
         
+        video_dict = video_to_dict(video, include_thumbnail=True)
         result.append({
-            "id": video.id,
-            "title": video.title,
-            "thumbnail": thumbnail,
+            "id": video_dict["id"],
+            "title": video_dict["title"],
+            "thumbnail": video_dict["thumbnail"],
             "watched_at": h.watched_at.isoformat(),
-            "views": video.views
+            "views": video_dict["views"]
         })
     
     return result
@@ -772,19 +715,15 @@ def get_subscriptions_feed(
     
     result = []
     for v in videos:
-        if v.custom_thumbnail_path:
-            thumbnail = f"http://localhost:8000/media/{v.custom_thumbnail_path}"
-        else:
-            thumbnail = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
-        
+        video_dict = video_to_dict(v, include_thumbnail=True)
         result.append({
-            "id": v.id,
-            "title": v.title,
-            "author": v.author.username if v.author else "Неизвестно",
-            "author_id": v.author_id,
-            "thumbnail": thumbnail,
-            "upload_date": v.upload_date.isoformat() if v.upload_date else None,
-            "views": v.views
+            "id": video_dict["id"],
+            "title": video_dict["title"],
+            "author": video_dict["author"] or "Неизвестно",
+            "author_id": video_dict["author_id"],
+            "thumbnail": video_dict["thumbnail"],
+            "upload_date": video_dict["upload_date"],
+            "views": video_dict["views"]
         })
     
     return result
@@ -876,14 +815,7 @@ def get_personal_recommendations(
     return [rec for rec in recommendations if "score" in rec][:limit]
 
 
-def format_videos(videos):
+
+def format_videos(videos, base_url: str = "http://localhost:8000"):
     """Вспомогательная функция для форматирования списка видео"""
-    return [{
-        "id": v.id,
-        "title": v.title,
-        "author": v.author.username if v.author else "Аноним",
-        "author_id": v.author_id,
-        "views": v.views,
-        "upload_date": v.upload_date.isoformat(),
-        "thumbnail": f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
-    } for v in videos]
+    return [video_to_dict(v, include_thumbnail=True) for v in videos]
