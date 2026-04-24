@@ -7,6 +7,7 @@ import CommentSection from '../components/CommentSection';
 import SubscribeButton from '../components/SubscribeButton';
 import VideoPlayer from '../components/VideoPlayer';
 import { useAuth } from '../context/AuthContext';
+import AddToPlaylistModal from '../components/AddToPlaylistModal';
 import './VideoWatchPage.css';
 
 
@@ -36,7 +37,7 @@ const VideoWatchPage: React.FC = () => {
   const [dislikes, setDislikes] = useState(0);
   const [userLikeStatus, setUserLikeStatus] = useState<boolean | null>(null);
   const [viewIncremented, setViewIncremented] = useState(false); // Флаг для предотвращения повторных вызовов
-
+  const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   // Загрузка данных
   useEffect(() => {
     const fetchData = async () => {
@@ -103,6 +104,14 @@ const VideoWatchPage: React.FC = () => {
       console.error('Ошибка при голосовании:', err);
     }
   };
+
+  const handleAddToPlaylist = () => {
+  if (!currentUser) {
+    alert('Войдите в аккаунт, чтобы добавлять видео в плейлисты');
+    return;
+  }
+  setShowPlaylistModal(true);
+};
 
   if (loading) return <div className="loading-container">Загрузка...</div>;
   if (error || !video) return <div className="error-container">{error || 'Видео не найдено'}</div>;
@@ -179,6 +188,14 @@ const VideoWatchPage: React.FC = () => {
               </button>
             </div>
 
+            {/* === КНОПКА "ДОБАВИТЬ В ПЛЕЙЛИСТ" === */}
+              <button 
+                className="add-to-playlist-btn"
+                onClick={handleAddToPlaylist}
+              >
+                📚 Добавить в плейлист
+              </button>
+
             {currentUser && currentUser.id === video.author_id && (
               <Link to={`/video/${video.id}/edit`} className="edit-link">
                 ✏️ Редактировать видео
@@ -213,6 +230,17 @@ const VideoWatchPage: React.FC = () => {
           </div>
         </aside>
       </div>
+            {/* Модалка добавления в плейлист */}
+      {showPlaylistModal && (
+        <AddToPlaylistModal
+          videoId={Number(id)}
+          onClose={() => setShowPlaylistModal(false)}
+          onSuccess={() => {
+            // Можно обновить что-то на странице при необходимости
+            console.log('Видео добавлено в плейлист');
+          }}
+        />
+      )}
     </div>
   );
 };

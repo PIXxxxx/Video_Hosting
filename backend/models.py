@@ -19,6 +19,7 @@ class User(Base):
         cascade="all, delete-orphan"
     )
     
+    playlists = relationship("Playlist", back_populates="author", cascade="all, delete-orphan")
     videos = relationship("Video", back_populates="author", cascade="all, delete-orphan")
 
 class Video(Base):
@@ -85,3 +86,37 @@ class WatchHistory(Base):
 
     user = relationship("User", back_populates="watch_history")
     video = relationship("Video")
+
+
+class Playlist(Base):
+    __tablename__ = "playlists"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    is_private = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    author = relationship("User", back_populates="playlists")
+    
+    videos = relationship(
+        "PlaylistVideo",
+        back_populates="playlist",
+        cascade="all, delete-orphan"
+    )
+
+class PlaylistVideo(Base):
+    __tablename__ = "playlist_videos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    playlist_id = Column(Integer, ForeignKey("playlists.id"), nullable=False)
+    video_id = Column(Integer, ForeignKey("videos.id"), nullable=False)
+    position = Column(Integer, default=0)  # порядок видео в плейлисте
+    
+    playlist = relationship("Playlist", back_populates="videos")
+    video = relationship("Video")
+
+    __table_args__ = (
+        UniqueConstraint('playlist_id', 'video_id', name='unique_playlist_video'),
+    )

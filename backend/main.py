@@ -317,7 +317,7 @@ def get_videos(
     try:
         videos = db.query(models.Video).filter(
         models.Video.is_private == False
-    ).order_by(models.Video.upload_date.desc()).offset(skip).limit(limit).all()
+     ).order_by(models.Video.upload_date.desc()).offset(skip).limit(limit).all()
         
         result = []
         
@@ -819,3 +819,210 @@ def get_personal_recommendations(
 def format_videos(videos, base_url: str = "http://localhost:8000"):
     """Вспомогательная функция для форматирования списка видео"""
     return [video_to_dict(v, include_thumbnail=True) for v in videos]
+
+# ========== ПЛЕЙЛИСТЫ ==========
+
+@app.post("/api/playlists/", response_model=schemas.PlaylistOut)
+def create_playlist(
+    playlist: schemas.PlaylistCreate,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    db_playlist = models.Playlist(
+        title=playlist.title,
+        description=playlist.description,
+        is_private=playlist.is_private,
+        author_id=current_user.id
+    )
+    db.add(db_playlist)
+    db.commit()
+    db.refresh(db_playlist)
+    
+    return {
+        "id": db_playlist.id,
+        "title": db_playlist.title,
+        "description": db_playlist.description,
+        "is_private": db_playlist.is_private,
+        "author_id": db_playlist.author_id,
+        "author": current_user.username,
+        "videos_count": 0,
+        "created_at": db_playlist.created_at,
+        "videos": []
+    }
+
+
+@app.get("/api/playlists/me")
+def get_my_playlists(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
+    playlists = db.query(models.Playlist).filter(
+        models.Playlist.author_id == current_user.id
+    ).order_by(models.Playlist.created_at.desc()).all()
+    
+    result = []
+    for p in playlists:
+        video_count = db.query(models.PlaylistVideo).filter(
+            models.PlaylistVideo.playlist_id == p.id
+        ).count()
+        
+        result.append({
+            "id": p.id,
+            "title": p.title,
+            "description": p.description,
+            "is_private": p.is_private,
+            "author_id": p.author_id,
+            "author": current_user.username,
+            "videos_count": video_count,
+            "created_at": p.created_at.isoformat()
+        })
+    return result
+
+
+@app.get("/api/playlist/{playlist_id}")
+def get_playlist(
+    playlist_id: int,
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    playlist = db.query(models.Playlist).filter(models.Playlist.id == playlist_id).first()
+    if not playlist:
+        raise HTTPException(404, "Плейлист не найден")
+    
+    # Проверка приватности
+    if playlist.is_private and (current_user is None or current_user.id != playlist.author_id):
+        raise HTTPException(403, "Это приватный плейлист")
+    
+    # Получаем видео в порядке position
+    playlist_videos = (
+        db.query(models.PlaylistVideo)
+        .join(models.Video)
+        .filter(models.PlaylistVideo.playlist_id == playlist_id)
+        .order_by(models.PlaylistVideo.position)
+        .all()
+    )
+    
+    videos = []
+    for pv in playlist_videos:
+        v = pv.video
+        thumbnail = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
+        if v.custom_thumbnail_path:
+            thumbnail = f"http://localhost:8000/media/{v.custom_thumbnail_path}"
+        
+        videos.append({
+            "id": v.id,
+            "title": v.title,
+            "author": v.author.username if v.author else None,
+            "thumbnail": thumbnail,
+            "views": v.views,
+            "is_processed": v.is_processed
+        })
+    
+    return {
+        "id": playlist.id,
+        "title": playlist.title,
+        "description": playlist.description,
+        "is_private": playlist.is_private,
+        "author_id": playlist.author_id,
+        "author": playlist.author.username,
+        "videos_count": len(videos),
+        "videos": videos,
+        "created_at": playlist.created_at.isoformat()
+    }
+
+
+@app.post("/api/playlist/{playlist_id}/add")
+def add_video_to_playlist(
+    playlist_id: int,
+    data: schemas.PlaylistVideoAdd,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    playlist = db.query(models.Playlist).filter(
+        models.Playlist.id == playlist_id,
+        models.Playlist.author_id == current_user.id
+    ).first()
+    if not playlist:
+        raise HTTPException(403, "Нет доступа к плейлисту")
+    
+    # Проверяем, что видео существует и принадлежит пользователю или публичное
+    video = db.query(models.Video).filter(models.Video.id == data.video_id).first()
+    if not video:
+        raise HTTPException(404, "Видео не найдено")
+    
+    # Проверяем дубликат
+    existing = db.query(models.PlaylistVideo).filter(
+        models.PlaylistVideo.playlist_id == playlist_id,
+        models.PlaylistVideo.video_id == data.video_id
+    ).first()
+    if existing:
+        raise HTTPException(400, "Видео уже в плейлисте")
+    
+    # Находим максимальную позицию
+    max_pos = db.query(models.PlaylistVideo).filter(
+        models.PlaylistVideo.playlist_id == playlist_id
+    ).order_by(models.PlaylistVideo.position.desc()).first()
+    
+    position = (max_pos.position + 1) if max_pos else 0
+    
+    pv = models.PlaylistVideo(
+        playlist_id=playlist_id,
+        video_id=data.video_id,
+        position=position
+    )
+    db.add(pv)
+    db.commit()
+    
+    return {"message": "Видео добавлено в плейлист"}
+
+
+@app.delete("/api/playlist/{playlist_id}/remove/{video_id}")
+def remove_video_from_playlist(
+    playlist_id: int,
+    video_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    playlist = db.query(models.Playlist).filter(
+        models.Playlist.id == playlist_id,
+        models.Playlist.author_id == current_user.id
+    ).first()
+    if not playlist:
+        raise HTTPException(403, "Нет доступа")
+    
+    pv = db.query(models.PlaylistVideo).filter(
+        models.PlaylistVideo.playlist_id == playlist_id,
+        models.PlaylistVideo.video_id == video_id
+    ).first()
+    if pv:
+        db.delete(pv)
+        db.commit()
+        return {"message": "Видео удалено из плейлиста"}
+    
+    raise HTTPException(404, "Видео не найдено в плейлисте")
+
+
+@app.put("/api/playlist/{playlist_id}")
+def update_playlist(
+    playlist_id: int,
+    update_data: schemas.PlaylistUpdate,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    playlist = db.query(models.Playlist).filter(
+        models.Playlist.id == playlist_id,
+        models.Playlist.author_id == current_user.id
+    ).first()
+    if not playlist:
+        raise HTTPException(403, "Нет доступа")
+    
+    if update_data.title is not None:
+        playlist.title = update_data.title
+    if update_data.description is not None:
+        playlist.description = update_data.description
+    if update_data.is_private is not None:
+        playlist.is_private = update_data.is_private
+    
+    db.commit()
+    db.refresh(playlist)
+    return {"message": "Плейлист обновлён"}

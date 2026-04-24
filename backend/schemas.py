@@ -107,3 +107,32 @@ class SubscriptionFeedItem(BaseModel):
     views: int
 
     model_config = ConfigDict(from_attributes=True)
+
+class PlaylistBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    is_private: bool = False
+
+class PlaylistCreate(PlaylistBase):
+    pass
+
+class PlaylistUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    is_private: Optional[bool] = None
+
+class PlaylistVideoAdd(BaseModel):
+    video_id: int
+
+class PlaylistOut(PlaylistBase):
+    id: int
+    author_id: int
+    author: Optional[str] = None  # username
+    videos_count: int = 0
+    created_at: datetime
+    videos: List[dict] = []  # упрощённо
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PlaylistDetailOut(PlaylistOut):
+    videos: List[dict] = []  # полная информация о видео

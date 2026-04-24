@@ -12,6 +12,7 @@ import ChannelPage from './pages/ChannelPage';
 import PrivateRoute from './components/PrivateRoute';
 import HistoryPage from './pages/HistoryPage'
 import SubscriptionsPage from './pages/SubscriptionsPage'
+import PlaylistPage from './pages/PlaylistPage'
 
 import { AuthProvider } from './context/AuthContext';
 import './App.css';
@@ -34,6 +35,7 @@ function App() {
               <Route path="/channel/:id" element={<ChannelPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/subscriptions" element={<SubscriptionsPage />} />
+              <Route path="/playlist/:id" element={<PlaylistPage />} />
             </Routes>
           </main>
         </div>
