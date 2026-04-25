@@ -1,127 +1,40 @@
-/* Navbar.css - YouTube стиль с поддержкой тем */
+/* Navbar.css - Современный YouTube стиль */
+/* Использует переменные из theme.css */
 
 .navbar {
   background: var(--yt-bg-primary);
-  padding: 8px 0;
+  padding: 0;
   position: sticky;
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--yt-border);
   transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.nav-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
   height: 56px;
 }
 
-/* Логотип */
-.nav-logo {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--yt-text-primary);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: color 0.2s ease;
-}
-
-.nav-logo:hover {
-  color: var(--yt-accent);
-}
-
-/* Основное меню (для больших экранов) */
-.nav-menu {
+.nav-container {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 16px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex: 1;
-  justify-content: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  height: 100%;
 }
 
-/* Поиск */
-.nav-menu .search-container {
-  flex: 1;
-  max-width: 520px;
-  margin: 0 16px;
-}
-
-/* Кнопки навигации */
-.nav-link {
-  color: var(--yt-text-primary);
-  text-decoration: none;
-  padding: 8px 16px;
-  border-radius: 40px;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.nav-link:hover {
-  background-color: var(--yt-bg-hover);
-}
-
-/* Секция пользователя */
-.user-section {
+/* Левая часть */
+.nav-left {
   display: flex;
   align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  padding: 6px 12px 6px 8px;
-  border-radius: 40px;
-  transition: all 0.2s ease;
+  gap: 16px;
 }
 
-.user-section:hover {
-  background: var(--yt-bg-hover);
-}
-
-.username {
-  color: var(--yt-text-primary);
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid var(--yt-border);
-}
-
-/* Кнопка переключения темы */
-.theme-toggle {
-  background: var(--yt-bg-tertiary);
-  border: 1px solid var(--yt-border);
-  border-radius: 40px;
-  cursor: pointer;
-  font-size: 18px;
-  padding: 8px 12px;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--yt-text-primary);
-}
-
-.theme-toggle:hover {
-  background: var(--yt-bg-hover);
-  transform: scale(1.02);
-}
-
-/* Гамбургер меню */
+/* Гамбургер */
 .hamburger {
   background: none;
   border: none;
   color: var(--yt-text-primary);
-  font-size: 24px;
   cursor: pointer;
   padding: 8px;
   display: flex;
@@ -130,15 +43,208 @@
   border-radius: 50%;
   width: 40px;
   height: 40px;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
 }
 
 .hamburger:hover {
   background: var(--yt-bg-hover);
 }
 
-/* Боковое меню (сайдбар) */
-.sidebar {
+.hamburger svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+/* Логотип */
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  background: var(--yt-red, #cc0000);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: white;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--yt-text-primary);
+  letter-spacing: -0.5px;
+}
+
+/* Центральная часть */
+.nav-center {
+  flex: 1;
+  max-width: 600px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Правая часть */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Кнопка темы */
+.theme-toggle {
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--yt-text-primary);
+  transition: background 0.2s ease;
+}
+
+.theme-toggle:hover {
+  background: var(--yt-bg-hover);
+}
+
+.theme-toggle svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+/* Кнопка загрузки */
+.upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 24px;
+  background: var(--yt-bg-tertiary);
+  color: var(--yt-text-primary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.upload-btn:hover {
+  background: var(--yt-bg-hover);
+}
+
+.upload-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* Секция пользователя */
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 12px 4px 4px;
+  border-radius: 24px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.user-section:hover {
+  background: var(--yt-bg-hover);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.user-avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.username {
+  color: var(--yt-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Кнопки входа/регистрации */
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-btn {
+  padding: 8px 16px;
+  border-radius: 24px;
+  color: var(--yt-text-primary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  background: var(--yt-bg-tertiary);
+}
+
+.login-btn:hover {
+  background: var(--yt-bg-hover);
+}
+
+.register-btn {
+  padding: 8px 20px;
+  border-radius: 24px;
+  background: var(--yt-accent);
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.register-btn:hover {
+  opacity: 0.9;
+}
+
+/* ====================== БОКОВОЕ МЕНЮ ====================== */
+.sidebar-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -148,45 +254,36 @@
   z-index: 200;
   display: flex;
   justify-content: flex-start;
-  backdrop-filter: blur(4px);
-  animation: fadeIn 0.2s ease;
+  animation: overlayIn 0.2s ease;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.sidebar-content {
+.sidebar {
   width: 280px;
   height: 100%;
   background: var(--yt-bg-primary);
-  padding: 20px;
   overflow-y: auto;
-  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.3);
-  animation: slideIn 0.2s ease;
+  box-shadow: var(--yt-shadow-hover);
+  animation: sidebarIn 0.25s ease;
   border-right: 1px solid var(--yt-border);
+  display: flex;
+  flex-direction: column;
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
+@keyframes sidebarIn {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
 }
 
 .sidebar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
+  padding: 20px 20px 16px;
   border-bottom: 1px solid var(--yt-border);
 }
 
@@ -197,99 +294,212 @@
   font-weight: 600;
 }
 
-.close-btn {
+.close-sidebar {
   background: none;
   border: none;
   color: var(--yt-text-primary);
-  font-size: 22px;
   cursor: pointer;
-  padding: 8px;
+  padding: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   width: 36px;
   height: 36px;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
 }
 
-.close-btn:hover {
+.close-sidebar:hover {
   background: var(--yt-bg-hover);
+}
+
+.close-sidebar svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.sidebar-nav {
+  padding: 12px 12px;
+  flex: 1;
+}
+
+.sidebar-section {
+  margin-bottom: 24px;
+}
+
+.sidebar-section-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--yt-text-secondary);
+  padding: 6px 12px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .sidebar-item {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
-  padding: 12px 16px;
+  padding: 10px 12px;
   color: var(--yt-text-primary);
   text-decoration: none;
-  font-size: 15px;
+  font-size: 14px;
   border-radius: 10px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   transition: all 0.2s ease;
   background: none;
   border: none;
   cursor: pointer;
   font-family: inherit;
+  font-weight: 500;
+  text-align: left;
 }
 
 .sidebar-item:hover {
   background: var(--yt-bg-hover);
 }
 
-.logout {
-  color: var(--yt-red);
-  margin-top: 20px;
-  border-top: 1px solid var(--yt-border);
-  padding-top: 16px;
+.sidebar-item.active {
+  background: var(--yt-bg-tertiary);
+  font-weight: 600;
 }
 
-.logout:hover {
+.sidebar-item svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.sidebar-item.logout {
+  color: var(--yt-text-primary);
+  margin-top: 8px;
+}
+
+.sidebar-item.logout:hover {
   background: rgba(244, 67, 54, 0.1);
 }
 
-/* Адаптивность */
+.sidebar-divider {
+  height: 1px;
+  background: var(--yt-border);
+  margin: 12px 0;
+}
+
+/* Скрытие прокрутки body при открытом меню */
+body.menu-open {
+  overflow: hidden;
+}
+
+/* ====================== АДАПТИВНОСТЬ ====================== */
 @media (max-width: 992px) {
-  .nav-menu {
+  .upload-btn span {
     display: none;
   }
   
-  .nav-container {
-    padding: 0 16px;
+  .upload-btn {
+    padding: 8px;
+    width: 40px;
+    height: 40px;
+    justify-content: center;
   }
   
-  .nav-logo {
-    font-size: 18px;
+  .nav-center {
+    flex: 1;
+    max-width: none;
   }
 }
 
 @media (max-width: 768px) {
   .navbar {
-    padding: 4px 0;
+    height: 52px;
   }
   
   .nav-container {
-    height: 52px;
+    padding: 0 8px;
+    gap: 8px;
+  }
+  
+  .nav-left {
+    gap: 8px;
   }
   
   .hamburger {
     width: 36px;
     height: 36px;
-    font-size: 20px;
+    padding: 6px;
   }
   
-  .nav-logo {
-    font-size: 16px;
+  .logo-text {
+    font-size: 17px;
   }
   
-  .sidebar-content {
+  .logo-icon {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .username {
+    display: none;
+  }
+  
+  .user-section {
+    padding: 4px;
+  }
+  
+  .user-avatar,
+  .user-avatar-placeholder {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .theme-toggle {
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+  }
+  
+  .sidebar {
     width: 260px;
   }
   
   .sidebar-item {
-    padding: 10px 14px;
-    font-size: 14px;
+    padding: 8px 12px;
+    font-size: 13px;
+    gap: 12px;
+  }
+  
+  .sidebar-item svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-container {
+    padding: 0 4px;
+    gap: 4px;
+  }
+  
+  .logo-text {
+    font-size: 15px;
+  }
+  
+  .upload-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .register-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  
+  .login-btn {
+    padding: 6px 12px;
+    font-size: 13px;
   }
 }

@@ -685,7 +685,10 @@ def get_watch_history(
 ):
     history = (
         db.query(models.WatchHistory)
-        .options(joinedload(models.WatchHistory.video))
+        .options(
+            joinedload(models.WatchHistory.video)
+            .joinedload(models.Video.author)
+        )
         .filter(models.WatchHistory.user_id == current_user.id)
         .order_by(models.WatchHistory.watched_at.desc())
         .limit(50)
@@ -699,12 +702,17 @@ def get_watch_history(
             continue
         
         video_dict = video_to_dict(video, include_thumbnail=True)
+        
         result.append({
-            "id": video_dict["id"],
-            "title": video_dict["title"],
-            "thumbnail": video_dict["thumbnail"],
+            "id": video.id,
+            "title": video.title,
+            "thumbnail": video_dict.get("thumbnail"),
+            "author": video.author.username if video.author else "Аноним",
+            "author_id": video.author_id,
             "watched_at": h.watched_at.isoformat(),
-            "views": video_dict["views"]
+            "upload_date": video.upload_date.isoformat(),
+            "views": video.views,
+            "file_path": video.file_path
         })
     
     return result
@@ -1118,3 +1126,34 @@ async def upload_banner(
         "message": "Шапка канала обновлена",
         "banner_url": f"http://localhost:8000/media/{current_user.banner_path}"
     }
+# ========== УПРАВЛЕНИЕ ИСТОРИЕЙ ПРОСМОТРОВ ==========
+
+@app.delete("/api/me/watch-history")
+def clear_watch_history(
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Полная очистка истории просмотров"""
+    db.query(models.WatchHistory).filter(
+        models.WatchHistory.user_id == current_user.id
+    ).delete()
+    db.commit()
+    return {"message": "История просмотров полностью очищена"}
+
+
+@app.delete("/api/me/watch-history/{video_id}")
+def remove_from_history(
+    video_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Удаление одного видео из истории"""
+    deleted = db.query(models.WatchHistory).filter(
+        models.WatchHistory.user_id == current_user.id,
+        models.WatchHistory.video_id == video_id
+    ).delete()
+    db.commit()
+    
+    if deleted > 0:
+        return {"message": "Видео удалено из истории"}
+    raise HTTPException(status_code=404, detail="Видео не найдено в истории")
