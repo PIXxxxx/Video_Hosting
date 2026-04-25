@@ -4,6 +4,7 @@ import axios from 'axios';
 import VideoCard from '../components/VideoCard';
 import SubscribeButton from '../components/SubscribeButton';
 import { useAuth } from '../context/AuthContext';
+import ImageCropModal from '../components/ImageCropModal';
 import './ChannelPage.css';
 
 interface ChannelVideo {
@@ -24,6 +25,7 @@ interface ChannelData {
   id: number;
   username: string;
   avatar_url: string;
+  banner_url?: string;
   videos_count: number;
   videos: ChannelVideo[];
 }
@@ -44,21 +46,28 @@ const ChannelPage: React.FC = () => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
   const [activeTab, setActiveTab] = useState<'videos' | 'playlists'>('videos');
 
-  // Загрузка канала
-  useEffect(() => {
-    const fetchChannel = async () => {
-      try {
-        const res = await axios.get(`http://localhost:8000/api/channel/${id}`);
-        setChannel(res.data);
-      } catch (err: any) {
-        setError(err.response?.data?.detail || 'Не удалось загрузить канал');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [showAvatarCrop, setShowAvatarCrop] = useState(false);
+  const [showBannerCrop, setShowBannerCrop] = useState(false);
+  const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
 
+  // Загрузка данных канала
+  const fetchChannel = async () => {
+    try {
+      const res = await axios.get(`http://localhost:8000/api/channel/${id}`);
+      console.log('📥 Данные канала:', res.data);
+      setChannel(res.data);
+    } catch (err: any) {
+      console.error('Ошибка загрузки канала:', err);
+      setError(err.response?.data?.detail || 'Не удалось загрузить канал');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (id) fetchChannel();
   }, [id]);
 
@@ -82,28 +91,106 @@ const ChannelPage: React.FC = () => {
     fetchPlaylists();
   }, [activeTab, token, currentUser, id]);
 
+  const isOwnChannel = currentUser?.id === Number(id);
+
+  // Выбор файла для обрезки
+  const handleFileSelect = (type: 'avatar' | 'banner') => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setTempImageSrc(event.target?.result as string);
+      if (type === 'avatar') setShowAvatarCrop(true);
+      else setShowBannerCrop(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Сохранение обрезанного изображения
+  const handleCropComplete = async (file: File, type: 'avatar' | 'banner') => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const endpoint = type === 'avatar' ? '/api/me/avatar' : '/api/me/banner';
+      await axios.post(`http://localhost:8000${endpoint}`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchChannel(); // обновляем данные канала
+      alert(type === 'avatar' ? 'Аватарка успешно обновлена!' : 'Шапка канала успешно обновлена!');
+    } catch (err: any) {
+      console.error(err);
+      alert('Ошибка при загрузке: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
   if (loading) return <div className="loading">Загрузка канала...</div>;
   if (error || !channel) return <div className="error-message">{error || 'Канал не найден'}</div>;
 
-  const isOwnChannel = currentUser?.id === Number(id);
+  // Полный URL для баннера
+  const bannerUrl = channel.banner_url 
+    ? (channel.banner_url.startsWith('http') 
+        ? channel.banner_url 
+        : `http://localhost:8000/media/${channel.banner_url}`)
+    : null;
 
   return (
     <div className="channel-page">
-      {/* Шапка канала */}
-      <div className="channel-header">
-        <img
-          src={channel.avatar_url}
-          alt={channel.username}
-          className="channel-avatar"
-          onError={(e) => {
-            e.currentTarget.src = `https://via.placeholder.com/128?text=${channel.username[0].toUpperCase()}`;
-          }}
-        />
+      {/* === ШАПКА КАНАЛА === */}
+      <div 
+        className="channel-header"
+        style={{
+          backgroundImage: bannerUrl 
+            ? `url(${bannerUrl})` 
+            : 'linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div className="banner-overlay" />
 
-        <div className="channel-info">
-          <h1>{channel.username}</h1>
-          <SubscribeButton authorId={channel.id} />
-          <p className="sub-count">{channel.videos_count} видео</p>
+        <div className="channel-header-content">
+          <div className="avatar-container">
+            <img
+              src={channel.avatar_url}
+              alt={channel.username}
+              className="channel-avatar"
+              onError={(e) => {
+                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(channel.username)}&background=065fd4&color=fff&size=128`;
+              }}
+            />
+            
+            {isOwnChannel && (
+              <label className="edit-avatar-btn">
+                ✏️
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect('avatar')}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            )}
+          </div>
+
+          <div className="channel-info">
+            <h1>{channel.username}</h1>
+            <SubscribeButton authorId={channel.id} />
+            <p className="sub-count">{channel.videos_count} видео</p>
+          </div>
+
+          {isOwnChannel && (
+            <label className="edit-banner-btn">
+              Изменить шапку
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect('banner')}
+                style={{ display: 'none' }}
+              />
+            </label>
+          )}
         </div>
       </div>
 
@@ -129,7 +216,6 @@ const ChannelPage: React.FC = () => {
       {/* === КОНТЕНТ ВКЛАДОК === */}
       <section className="channel-content">
         {activeTab === 'videos' ? (
-          // Вкладка ВИДЕО
           channel.videos.length === 0 ? (
             <p>На канале пока нет видео</p>
           ) : (
@@ -151,7 +237,7 @@ const ChannelPage: React.FC = () => {
             </div>
           )
         ) : (
-          // Вкладка ПЛЕЙЛИСТЫ
+          // === ВКЛАДКА ПЛЕЙЛИСТОВ (полностью восстановлена) ===
           <>
             {playlists.length === 0 ? (
               <p>У вас пока нет плейлистов.</p>
@@ -172,7 +258,6 @@ const ChannelPage: React.FC = () => {
               </div>
             )}
 
-            {/* Кнопка создания нового плейлиста */}
             {isOwnChannel && (
               <button 
                 className="create-playlist-btn"
@@ -185,6 +270,25 @@ const ChannelPage: React.FC = () => {
           </>
         )}
       </section>
+
+      {/* === МОДАЛКИ ОБРЕЗКИ === */}
+      <ImageCropModal
+        isOpen={showAvatarCrop}
+        onClose={() => setShowAvatarCrop(false)}
+        imageSrc={tempImageSrc}
+        aspect={1}
+        title="Обрежьте аватарку"
+        onCropComplete={(file) => handleCropComplete(file, 'avatar')}
+      />
+
+      <ImageCropModal
+        isOpen={showBannerCrop}
+        onClose={() => setShowBannerCrop(false)}
+        imageSrc={tempImageSrc}
+        aspect={16 / 9}
+        title="Обрежьте шапку канала (рекомендуется 2560×1440)"
+        onCropComplete={(file) => handleCropComplete(file, 'banner')}
+      />
     </div>
   );
 };

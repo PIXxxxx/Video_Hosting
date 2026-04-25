@@ -125,7 +125,7 @@ def process_video_task(self, video_id, input_path):
     )
     
     packager_cmd = [
-        "packager",
+        r"..\packager.exe",
         *packager_inputs,  # распаковываем список
         "--generate_static_live_mpd",
         "--hls_master_playlist_output", master_playlist,

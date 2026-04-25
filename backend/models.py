@@ -18,6 +18,8 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+    avatar_path = Column(String(500), nullable=True)
+    banner_path = Column(String(500), nullable=True)
     
     playlists = relationship("Playlist", back_populates="author", cascade="all, delete-orphan")
     videos = relationship("Video", back_populates="author", cascade="all, delete-orphan")

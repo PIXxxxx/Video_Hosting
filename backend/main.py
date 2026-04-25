@@ -15,12 +15,16 @@ from database import engine, get_db, init_db
 import schemas
 import auth
 from celery_app import process_video_task
+from PIL import Image
+import io
 
 init_db()
 
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("media/videos", exist_ok=True)
 os.makedirs("media/thumbnails", exist_ok=True)
+os.makedirs("media/avatars", exist_ok=True)
+os.makedirs("media/banners", exist_ok=True)
 
 app = FastAPI(title="Video Hosting API")
 
@@ -342,7 +346,7 @@ def get_videos_count(db: Session = Depends(get_db)):
 def get_channel(
     user_id: int, 
     db: Session = Depends(get_db)
-    ):
+):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
@@ -355,17 +359,24 @@ def get_channel(
         .all()
     )
 
-    video_list = []
-    for v in videos:
-        video_dict = video_to_dict(v, include_thumbnail=True)
-        # Добавляем специфичные для канала поля
-        video_dict["author"] = user.username  # перезаписываем автора
-        video_list.append(video_dict)
+    video_list = [video_to_dict(v, include_thumbnail=True) for v in videos]
+    for v in video_list:
+        v["author"] = user.username
+
+    # === Логика аватарки и шапки ===
+    avatar_url = f"https://ui-avatars.com/api/?name={user.username}&background=random"
+    if user.avatar_path:
+        avatar_url = f"http://localhost:8000/media/{user.avatar_path}"
+
+    banner_url = None
+    if user.banner_path:
+        banner_url = f"http://localhost:8000/media/{user.banner_path}"
 
     return {
         "id": user.id,
         "username": user.username,
-        "avatar_url": f"https://ui-avatars.com/api/?name={user.username}&background=random",
+        "avatar_url": avatar_url,      # ← теперь всегда правильный URL
+        "banner_url": banner_url,      # ← шапка
         "videos_count": len(video_list),
         "videos": video_list,
     }
@@ -1026,3 +1037,84 @@ def update_playlist(
     db.commit()
     db.refresh(playlist)
     return {"message": "Плейлист обновлён"}
+
+
+# ========== АВАТАРКА (круглая, 1:1) ==========
+@app.post("/api/me/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(400, "Только изображения")
+
+    # Читаем изображение
+    contents = await file.read()
+    image = Image.open(io.BytesIO(contents))
+
+    # Приводим к квадрату 512x512 (или любой размер)
+    output_size = (512, 512)
+    image = image.resize(output_size, Image.Resampling.LANCZOS).convert("RGB")
+
+    filename = f"user_{current_user.id}.jpg"
+    save_path = f"media/avatars/{filename}"
+
+    image.save(save_path, "JPEG", quality=85)
+
+    current_user.avatar_path = f"avatars/{filename}"
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Аватарка обновлена",
+        "avatar_url": f"http://localhost:8000/media/{current_user.avatar_path}"
+    }
+
+# ========== ШАПКА КАНАЛА (banner 2560x1440 или 16:9) ==========
+@app.post("/api/me/banner")
+async def upload_banner(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(400, "Только изображения")
+
+    contents = await file.read()
+    image = Image.open(io.BytesIO(contents))
+
+    # Целевое соотношение 2560 × 1440 → 16:9
+    target_ratio = 2560 / 1440  # ≈ 1.777...
+
+    # Приводим к нужному соотношению с центрированием (можно улучшить crop позже)
+    width, height = image.size
+    current_ratio = width / height
+
+    if current_ratio > target_ratio:
+        # Обрезаем по ширине
+        new_width = int(height * target_ratio)
+        left = (width - new_width) // 2
+        image = image.crop((left, 0, left + new_width, height))
+    else:
+        # Обрезаем по высоте
+        new_height = int(width / target_ratio)
+        top = (height - new_height) // 2
+        image = image.crop((0, top, width, top + new_height))
+
+    # Финальный ресайз
+    image = image.resize((2560, 1440), Image.Resampling.LANCZOS).convert("RGB")
+
+    filename = f"user_{current_user.id}.jpg"
+    save_path = f"media/banners/{filename}"
+
+    image.save(save_path, "JPEG", quality=85)
+
+    current_user.banner_path = f"banners/{filename}"
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Шапка канала обновлена",
+        "banner_url": f"http://localhost:8000/media/{current_user.banner_path}"
+    }
