@@ -16,4 +16,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
+    BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8000")
+    MEDIA_URL: str = f"{BASE_URL}/media"
+
 settings = Settings()

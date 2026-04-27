@@ -29,6 +29,11 @@ def get_db_session():
     from database import SessionLocal
     return SessionLocal()
 
+def has_audio_stream(file_path):
+    cmd = [FFMPEG_PATH, '-i', file_path]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    return 'Audio:' in result.stderr
+
 @celery_app.task(bind=True, name='process_video_task')
 def process_video_task(self, video_id, input_path):
     """Оптимизированная обработка видео: FFmpeg + Shaka Packager"""
@@ -118,11 +123,12 @@ def process_video_task(self, video_id, input_path):
         )
     
     # Добавляем аудио (из 1080p)
-    packager_inputs.append(
-        f"in={video_dir}1080p.mp4,stream=audio,"
-        f"init_segment={video_dir}audio/init.mp4,"
-        f"segment_template={video_dir}audio/$Number$.m4s"
-    )
+    if has_audio_stream(input_path):
+        packager_inputs.append(
+            f"in={video_dir}1080p.mp4,stream=audio,"
+            f"init_segment={video_dir}audio/init.mp4,"
+            f"segment_template={video_dir}audio/$Number$.m4s"
+        )
     
     packager_cmd = [
         r"..\packager.exe",

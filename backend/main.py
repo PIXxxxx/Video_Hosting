@@ -8,7 +8,7 @@ import shutil
 import os
 import uuid
 from datetime import timedelta
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime  
 import models
 from database import engine, get_db, init_db
@@ -17,6 +17,10 @@ import auth
 from celery_app import process_video_task
 from PIL import Image
 import io
+from config import settings
+import mimetypes
+from file_validator import validate_video_file
+from sqlalchemy import func
 
 init_db()
 
@@ -52,8 +56,8 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 # TODO : Заменить return
 def video_to_dict(
         video: models.Video, 
-        include_thumbnail: bool = False, 
-        base_url: str = "http://localhost:8000") -> dict:
+        include_thumbnail: bool = False,
+        ):
     """Конвертирует объект Video в словарь с нужными полями"""
     result = {
         "id": video.id,
@@ -72,11 +76,60 @@ def video_to_dict(
     
     if include_thumbnail:
         if video.custom_thumbnail_path:
-            result["thumbnail"] = f"{base_url}/media/{video.custom_thumbnail_path}"
+            result["thumbnail"] = f"{settings.MEDIA_URL}/{video.custom_thumbnail_path}"
         else:
-            result["thumbnail"] = f"{base_url}/media/thumbnails/{video.id}.jpg"
+            result["thumbnail"] = f"{settings.MEDIA_URL}/thumbnails/{video.id}.jpg"
     
     return result
+
+def get_safe_extension(filename: str) -> str:
+    ext = os.path.splitext(filename)[1].lower()
+    if ext in ['.mp4', '.avi', '.mov', '.mkv']:
+        return ext
+    raise HTTPException(400, f"Неподдерживаемое расширение: {ext}")
+
+def format_video(
+    video, 
+    include_thumbnail: bool = True, 
+    fields: Optional[List[str]] = None
+) -> Dict[str, Any]:
+
+    base = video_to_dict(video, include_thumbnail=include_thumbnail)
+    
+    if fields is None:
+        return base
+    
+    return {k: base[k] for k in fields if k in base}
+
+
+def format_videos(
+    videos: List,
+    include_thumbnail: bool = True, 
+    fields: Optional[List[str]] = None
+) -> List[Dict[str, Any]]:
+    
+    return [format_video(v, include_thumbnail, fields) for v in videos]
+
+def format_playlist(playlist, videos):
+    """Форматирует плейлист с видео"""
+    return {
+        "id": playlist.id,
+        "title": playlist.title,
+        "description": playlist.description,
+        "is_private": playlist.is_private,
+        "author_id": playlist.author_id,
+        "author": playlist.author.username,
+        "videos_count": len(videos),
+        "videos": videos,
+        "created_at": playlist.created_at.isoformat()
+    }
+
+def check_video_access(video: models.Video, current_user: Optional[models.User]) -> None:
+    if video.is_private and (current_user is None or current_user.id != video.author_id):
+        raise HTTPException(
+            status_code=403, 
+            detail="Это приватное видео. Доступ только для автора."
+        )
 
 @app.get("/")
 def read_root():
@@ -159,7 +212,7 @@ def get_my_videos(
     # TODO: оптимизировать код "id": v.id
 
     result = []
-    return [video_to_dict(v) for v in videos]
+    return format_videos(videos)
 
 @app.post("/api/upload/")
 async def upload_video(
@@ -174,10 +227,8 @@ async def upload_video(
     try:
         print(f"📥 Пользователь {current_user.username} загружает: {file.filename}")
         
-        if not file.content_type.startswith('video/'):
-            raise HTTPException(status_code=400, detail="Файл должен быть видео")
         # возможный баг, если расширение не в нижнем регистре или двойное расширение (.tar.gz)
-        file_extension = os.path.splitext(file.filename)[1] # TODO: possible bug!!!
+        file_extension = validate_video_file(file) # TODO: possible bug!!! Исправлено!
         
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         file_path = os.path.join("uploads", unique_filename)
@@ -228,13 +279,12 @@ def get_video(
             print(f"❌ Видео {video_id} не найдено")
             raise HTTPException(status_code=404, detail="Видео не найдено")
 
-        if video.is_private and (current_user is None or current_user.id != video.author_id):
-            raise HTTPException(status_code=403, detail="Это приватное видео. Доступ только для автора.")
+        check_video_access(video, current_user)
 
         # Формируем URL миниатюры
-        thumbnail_url = f"http://localhost:8000/media/thumbnails/{video.id}.jpg"
+        thumbnail_url = f"{settings.MEDIA_URL}/thumbnails/{video.id}.jpg"
         if video.custom_thumbnail_path:
-            thumbnail_url = f"http://localhost:8000/media/{video.custom_thumbnail_path}"
+            thumbnail_url = f"{settings.MEDIA_URL}/{video.custom_thumbnail_path}"
 
         video_data = video_to_dict(video)
         video_data["thumbnail"] = thumbnail_url
@@ -261,8 +311,7 @@ def increment_video_view(
         if not video:
             raise HTTPException(status_code=404, detail="Видео не найдено")
 
-        if video.is_private and (current_user is None or current_user.id != video.author_id):
-            raise HTTPException(status_code=403, detail="Доступ запрещён")
+        check_video_access(video, current_user)
 
         should_increment = True
 
@@ -323,13 +372,7 @@ def get_videos(
         models.Video.is_private == False
      ).order_by(models.Video.upload_date.desc()).offset(skip).limit(limit).all()
         
-        result = []
-        
-        for v in videos:
-            video_dict = video_to_dict(v, include_thumbnail=True)
-            result.append(video_dict)
-        
-        return result
+        return format_videos(videos, include_thumbnail=True)
     
     except Exception as e:
         import traceback
@@ -359,18 +402,19 @@ def get_channel(
         .all()
     )
 
-    video_list = [video_to_dict(v, include_thumbnail=True) for v in videos]
+    video_list = format_videos(videos, include_thumbnail=True)
+    # TODO: Автор уже должен быть - Проверить
     for v in video_list:
         v["author"] = user.username
 
     # === Логика аватарки и шапки ===
     avatar_url = f"https://ui-avatars.com/api/?name={user.username}&background=random"
     if user.avatar_path:
-        avatar_url = f"http://localhost:8000/media/{user.avatar_path}"
+        avatar_url = f"{settings.MEDIA_URL}/{user.avatar_path}"
 
     banner_url = None
     if user.banner_path:
-        banner_url = f"http://localhost:8000/media/{user.banner_path}"
+        banner_url = f"{settings.MEDIA_URL}/{user.banner_path}"
 
     return {
         "id": user.id,
@@ -440,7 +484,7 @@ async def upload_custom_thumbnail(
     return { 
         "message": "Обложка обновлена",
         "custom_thumbnail_path": video.custom_thumbnail_path,
-        "thumbnail_url": f"http://localhost:8000/media/{video.custom_thumbnail_path}"
+        "thumbnail_url": f"{settings.MEDIA_URL}/{video.custom_thumbnail_path}"
     }
 
 
@@ -492,21 +536,10 @@ def search(
         models.User.username.ilike(query)
     ).order_by(models.Video.upload_date.desc()).limit(15).all()
     
-    result = []
-    for v in videos:
-        video_dict = video_to_dict(v, include_thumbnail=True)
-        # Оставляем только нужные поля для поиска
-        result.append({
-            "id": video_dict["id"],
-            "title": video_dict["title"],
-            "author": video_dict["author"],
-            "author_id": video_dict["author_id"],
-            "thumbnail": video_dict["thumbnail"],
-            "views": video_dict["views"],
-            "upload_date": video_dict["upload_date"]
-        })
-    
-    return result
+    return format_videos(videos, include_thumbnail=True, fields=[
+        "id", "title", "author", "author_id", 
+        "thumbnail", "views", "upload_date"
+    ])
 
 @app.post("/api/video/{video_id}/like")
 def toggle_like(
@@ -535,10 +568,18 @@ def toggle_like(
 
 @app.get("/api/video/{video_id}/likes")
 def get_likes(video_id: int, db: Session = Depends(get_db)):
-    likes = db.query(models.Like).filter(models.Like.video_id == video_id).all()
+
+    like_count = db.query(func.count(models.Like.id)).filter(
+        models.Like.video_id == video_id,
+        models.Like.is_like == True
+    ).scalar() or 0
+    
     # TODO: optimize via query
-    like_count = sum(1 for l in likes if l.is_like)
-    dislike_count = len(likes) - like_count
+
+    dislike_count = db.query(func.count(models.Like.id)).filter(
+        models.Like.video_id == video_id,
+        models.Like.is_like == False
+    ).scalar() or 0
     return {"likes": like_count, "dislikes": dislike_count}
 
 
@@ -649,35 +690,6 @@ def get_subscription_status(
         "subscribers_count": subscribers_count
     }
 
-# ========== ЛИЧНЫЙ КАБИНЕТ (для меню) ==========
-
-@app.get("/api/me/videos")
-def get_my_videos(
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_active_user)
-):
-    """Мои видео"""
-    videos = db.query(models.Video).filter(
-        models.Video.author_id == current_user.id
-    ).order_by(models.Video.upload_date.desc()).all()
-    
-    result = []
-    for v in videos:
-        video_dict = video_to_dict(v, include_thumbnail=True)
-        # Убираем лишние поля
-        result.append({
-            "id": video_dict["id"],
-            "title": video_dict["title"],
-            "description": video_dict["description"],
-            "views": video_dict["views"],
-            "upload_date": video_dict["upload_date"],
-            "thumbnail": video_dict["thumbnail"],
-            "is_processed": video_dict["is_processed"]
-        })
-    
-    return result
-
-
 @app.get("/api/me/watch-history")
 def get_watch_history(
     db: Session = Depends(get_db),
@@ -732,20 +744,10 @@ def get_subscriptions_feed(
         .all()
     )
     
-    result = []
-    for v in videos:
-        video_dict = video_to_dict(v, include_thumbnail=True)
-        result.append({
-            "id": video_dict["id"],
-            "title": video_dict["title"],
-            "author": video_dict["author"] or "Неизвестно",
-            "author_id": video_dict["author_id"],
-            "thumbnail": video_dict["thumbnail"],
-            "upload_date": video_dict["upload_date"],
-            "views": video_dict["views"]
-        })
-    
-    return result
+    return format_videos(videos, include_thumbnail=True, fields=[
+        "id", "title", "author", "author_id", 
+        "thumbnail", "upload_date", "views"
+    ])
 
 @app.get("/api/recommendations/personal")
 def get_personal_recommendations(
@@ -814,32 +816,21 @@ def get_personal_recommendations(
         
         # Считаем score для этого видео
         video_score = sum(tag_score.get(tag, 0) for tag in video_tags)
+        match_tags = [tag for tag in video_tags if tag in tag_score]
+
+        video_dict = format_video(video, include_thumbnail=True, fields=[
+            "id", "title", "author", "author_id", "views", "upload_date", "thumbnail"
+        ])
+        video_dict["score"] = video_score  # добавляем score отдельно
+        video_dict["match_tags"] = match_tags
 
         if video_score > 0:
-            recommendations.append({
-                "id": video.id,
-                "title": video.title,
-                "author": video.author.username if video.author else "Аноним",
-                "author_id": video.author_id,
-                "views": video.views,
-                "upload_date": video.upload_date.isoformat(),
-                "thumbnail": f"http://localhost:8000/media/thumbnails/{video.id}.jpg",
-                "score": video_score,
-                "match_tags": [tag for tag in video_tags if tag in tag_score]
-            })
+            recommendations.append(video_dict)
 
     # Сортируем по score (чем выше — тем лучше)
     recommendations.sort(key=lambda x: x["score"], reverse=True)
 
-    return [rec for rec in recommendations if "score" in rec][:limit]
-
-
-
-def format_videos(videos, base_url: str = "http://localhost:8000"):
-    """Вспомогательная функция для форматирования списка видео"""
-    return [video_to_dict(v, include_thumbnail=True) for v in videos]
-
-# ========== ПЛЕЙЛИСТЫ ==========
+    return recommendations[:limit]
 
 @app.post("/api/playlists/", response_model=schemas.PlaylistOut)
 def create_playlist(
@@ -920,35 +911,11 @@ def get_playlist(
         .order_by(models.PlaylistVideo.position)
         .all()
     )
+    videos = [format_video(pv.video, include_thumbnail=True, fields=[
+        "id", "title", "author", "thumbnail", "views", "is_processed"
+    ]) for pv in playlist_videos]
     
-    videos = []
-    for pv in playlist_videos:
-        v = pv.video
-        thumbnail = f"http://localhost:8000/media/thumbnails/{v.id}.jpg"
-        if v.custom_thumbnail_path:
-            thumbnail = f"http://localhost:8000/media/{v.custom_thumbnail_path}"
-        
-        videos.append({
-            "id": v.id,
-            "title": v.title,
-            "author": v.author.username if v.author else None,
-            "thumbnail": thumbnail,
-            "views": v.views,
-            "is_processed": v.is_processed
-        })
-    
-    return {
-        "id": playlist.id,
-        "title": playlist.title,
-        "description": playlist.description,
-        "is_private": playlist.is_private,
-        "author_id": playlist.author_id,
-        "author": playlist.author.username,
-        "videos_count": len(videos),
-        "videos": videos,
-        "created_at": playlist.created_at.isoformat()
-    }
-
+    return format_playlist(playlist, videos)
 
 @app.post("/api/playlist/{playlist_id}/add")
 def add_video_to_playlist(
@@ -1076,7 +1043,7 @@ async def upload_avatar(
 
     return {
         "message": "Аватарка обновлена",
-        "avatar_url": f"http://localhost:8000/media/{current_user.avatar_path}"
+        "avatar_url": f"{settings.MEDIA_URL}/{current_user.avatar_path}"
     }
 
 # ========== ШАПКА КАНАЛА (banner 2560x1440 или 16:9) ==========
@@ -1124,7 +1091,7 @@ async def upload_banner(
 
     return {
         "message": "Шапка канала обновлена",
-        "banner_url": f"http://localhost:8000/media/{current_user.banner_path}"
+        "banner_url": f"{settings.MEDIA_URL}/{current_user.banner_path}"
     }
 # ========== УПРАВЛЕНИЕ ИСТОРИЕЙ ПРОСМОТРОВ ==========
 
