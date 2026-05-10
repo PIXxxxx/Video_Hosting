@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import styles from './UploadForm.module.css'; // Импорт как модуль
+import { Link } from 'react-router-dom';
 
 const UploadForm = () => {
     const [file, setFile] = useState<File | null>(null);
@@ -13,6 +14,7 @@ const UploadForm = () => {
     const [description, setDescription] = useState('');
     const [tags, setTags] = useState<string[]>([]); // Изменено на массив
     const [tagInput, setTagInput] = useState(''); // Для ввода нового тега
+    const [isVertical, setIsVertical] = useState(false);
     const { user } = useAuth();
 
     // Добавление тега
@@ -55,6 +57,7 @@ const UploadForm = () => {
         formData.append('description', description);
         // Преобразуем массив тегов в строку через запятую
         formData.append('tags', tags.join(', '));
+        formData.append('is_vertical', isVertical.toString());
 
         try {
             const response = await axios.post('http://localhost:8000/api/upload/', formData, {
@@ -101,7 +104,18 @@ const UploadForm = () => {
     }
 
     return (
+        
+
         <div className={styles['upload-container']}>
+            <div className={styles['upload-type-selector']}>
+            <Link to="/upload" className={styles['upload-link']}>
+                📹 Обычное видео
+            </Link>
+            <Link to="/upload/vidic" className={styles['upload-link-active']}>
+                📱 Вертикальное видео (Vidic)
+            </Link>
+            </div>
+            
             <div className={styles['upload-form']}>
                 <form onSubmit={handleSubmit}>
                     <div className={styles['form-group']}>
@@ -115,7 +129,7 @@ const UploadForm = () => {
                             disabled={uploading}
                         />
                     </div>
-
+                    
                     <div className={styles['form-group']}>
                         <label>Описание видео</label>
                         <textarea

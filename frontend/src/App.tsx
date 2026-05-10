@@ -13,6 +13,8 @@ import PrivateRoute from './components/PrivateRoute';
 import HistoryPage from './pages/HistoryPage'
 import SubscriptionsPage from './pages/SubscriptionsPage'
 import PlaylistPage from './pages/PlaylistPage'
+import VidicUploadForm from './components/VidicUploadForm';
+import VidicPage from './pages/VidicFeed';
 
 import { AuthProvider } from './context/AuthContext';
 import './App.css';
@@ -36,6 +38,8 @@ function App() {
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/subscriptions" element={<SubscriptionsPage />} />
               <Route path="/playlist/:id" element={<PlaylistPage />} />
+              <Route path="/vidic" element={<VidicPage />} />
+              <Route path="/upload/vidic" element={<PrivateRoute><VidicUploadForm /></PrivateRoute>} />
             </Routes>
           </main>
         </div>

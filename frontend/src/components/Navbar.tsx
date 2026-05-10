@@ -155,6 +155,12 @@ const Navbar: React.FC = () => {
                 <UploadIcon />
                 <span>Загрузить</span>
               </Link>
+              
+            )}
+            {isAuthenticated && (
+              <Link to="/vidic" className="vidic-btn">
+                📱 Vidic
+              </Link>
             )}
 
             {isAuthenticated && user ? (
@@ -231,6 +237,10 @@ const Navbar: React.FC = () => {
                 <Link to="/subscriptions" className="sidebar-item" onClick={() => setMenuOpen(false)}>
                   <SubscriptionsIcon />
                   Подписки
+                </Link>
+
+                <Link to="/vidic" className="sidebar-item" onClick={() => setMenuOpen(false)}>
+                  📱 Vidic (Shorts)
                 </Link>
               </div>
 

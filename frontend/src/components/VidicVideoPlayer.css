@@ -1,0 +1,152 @@
+/* src/components/VidicVideoPlayer.css */
+
+.vidic-player-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+}
+
+.vidic-player-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+/* Видео */
+.vidic-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ====================== КОНТРОЛЫ ====================== */
+
+.vidic-controls {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);           /* ← Вот ключевой момент */
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 20px 16px 16px;
+  background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.4) 60%, transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.vidic-controls.visible {
+  opacity: 1;
+}
+
+/* Прогресс */
+.vidic-progress-container {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.vidic-progress-bar {
+  width: 100% !important;
+  height: 4px;
+  appearance: none;
+  background: rgba(255,255,255,0.35);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.vidic-progress-bar::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #ff3b30;
+  border: 2px solid white;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+/* Панель кнопок */
+.vidic-button-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.vidic-control-btn {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  border: none;
+  color: white;
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.vidic-control-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
+}
+
+.vidic-time {
+  color: white;
+  font-size: 13.5px;
+  font-family: monospace;
+  background: rgba(0,0,0,0.6);
+  padding: 4px 10px;
+  border-radius: 10px;
+}
+
+/* Громкость */
+.vidic-volume-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vidic-volume-slider {
+  width: 0;
+  opacity: 0;
+  transition: all 0.25s;
+  height: 4px;
+  background: rgba(255,255,255,0.4);
+}
+
+.vidic-volume-container:hover .vidic-volume-slider {
+  width: 95px;
+  opacity: 1;
+}
+
+/* Буферизация */
+.vidic-buffering {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 35;
+}
+
+.vidic-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255,255,255,0.25);
+  border-top-color: #ff3b30;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

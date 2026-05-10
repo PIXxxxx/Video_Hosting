@@ -21,6 +21,8 @@ from config import settings
 import mimetypes
 from file_validator import validate_video_file
 from sqlalchemy import func
+from celery_app_vidic import process_vidic_task
+from models import VidicVideo, VidicLike    
 
 init_db()
 
@@ -29,6 +31,9 @@ os.makedirs("media/videos", exist_ok=True)
 os.makedirs("media/thumbnails", exist_ok=True)
 os.makedirs("media/avatars", exist_ok=True)
 os.makedirs("media/banners", exist_ok=True)
+os.makedirs("vidic_uploads", exist_ok=True)
+os.makedirs("media/vidic_videos", exist_ok=True)
+os.makedirs("media/vidic_thumbnails", exist_ok=True)
 
 app = FastAPI(title="Video Hosting API")
 
@@ -238,14 +243,15 @@ async def upload_video(
         
         print(f"💾 Файл сохранен: {file_path}")
         
-        db_video = models.Video(
+        db_video = models.Video( 
             title=title,
             description=description,
-            tags=tags.strip() if tags else None,
+            tags=tags.strip() if tags else None,    
             file_path=file_path,
             is_processed=False,
             author_id=current_user.id
         )
+
         db.add(db_video)
         db.commit()
         db.refresh(db_video)
@@ -1124,3 +1130,250 @@ def remove_from_history(
     if deleted > 0:
         return {"message": "Видео удалено из истории"}
     raise HTTPException(status_code=404, detail="Видео не найдено в истории")
+# main.py - добавьте новый эндпоинт
+# main.py
+
+@app.post("/api/upload-vidic")
+async def upload_vidic(
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    description: Optional[str] = Form(default=""),
+    tags: Optional[str] = Form(default=""),
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Отдельный эндпоинт для загрузки вертикальных Vidic видео
+    """
+    try:
+        print(f"\n{'='*60}")
+        print(f"📱 VIDIC UPLOAD от {current_user.username}")
+        print(f"📹 Файл: {file.filename}")
+        print(f"📝 Название: {title}")
+        print(f"{'='*60}")
+        
+        # Создаем папки
+        os.makedirs("vidic_uploads", exist_ok=True)
+        os.makedirs("media/vidic_videos", exist_ok=True)
+        os.makedirs("media/vidic_thumbnails", exist_ok=True)
+        
+        # 1. Валидация файла
+        file_extension = validate_video_file(file)
+        
+        # 2. Сохраняем в папку vidic_uploads
+        unique_filename = f"vidic_{uuid.uuid4()}{file_extension}"
+        file_path = os.path.join("vidic_uploads", unique_filename)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        print(f"💾 Файл сохранен: {file_path}")
+        
+        db_video = models.VidicVideo(
+            title=title,
+            description=description,
+            tags=tags.strip() if tags else None,
+            file_path=file_path,
+            is_processed=False,
+            author_id=current_user.id,
+        )
+        
+        db.add(db_video)
+        db.commit()
+        db.refresh(db_video)
+        
+        print(f"✅ Видео записано в БД: id={db_video.id}")
+        
+        # 4. Запускаем задачу для Vidic
+        from celery_app_vidic import process_vidic_task
+        process_vidic_task.delay(db_video.id, file_path)
+        
+        print(f"✅ Vidic видео {db_video.id} добавлено в очередь обработки")
+        
+        return JSONResponse({
+            "success": True,
+            "message": "✅ Vidic видео успешно загружено! Обработка начата.",
+            "video_id": db_video.id,
+            "title": title,
+            "file_name": file.filename
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Ошибка при загрузке Vidic: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Ошибка загрузки: {str(e)}")
+
+
+# main.py - обновите get_vidic_feed
+
+@app.get("/api/vidic/feed")
+def get_vidic_feed(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(30, ge=1, le=100),
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Получить ленту вертикальных видео (Vidic)"""
+    
+    videos = db.query(VidicVideo).filter(
+        VidicVideo.is_processed == True
+    ).order_by(VidicVideo.upload_date.desc()).offset(skip).limit(limit).all()
+    
+    result = []
+    for video in videos:
+        # Формируем URL для HLS
+        video_url = None
+        if video.hls_playlist_path:
+            video_url = f"http://localhost:8000/{video.hls_playlist_path.replace(chr(92), '/')}"
+        elif video.file_path:
+            video_url = f"http://localhost:8000/{video.file_path.replace(chr(92), '/')}"
+        
+        # Получаем количество лайков
+        likes_count = db.query(VidicLike).filter(VidicLike.video_id == video.id).count()
+        
+        # Проверяем, лайкнул ли текущий пользователь
+        is_liked = False
+        if current_user:
+            existing_like = db.query(VidicLike).filter(
+                VidicLike.video_id == video.id,
+                VidicLike.user_id == current_user.id
+            ).first()
+            is_liked = existing_like is not None
+        
+        # Получаем автора
+        author = video.author
+        
+        result.append({
+            "id": video.id,
+            "title": video.title,
+            "description": video.description or "",
+            "video_url": video_url,
+            "views": video.views or 0,
+            "likes_count": likes_count,
+            "is_liked": is_liked,
+            "author_id": video.author_id,
+            "author": author.username if author else "Unknown",
+            "author_avatar": f"https://ui-avatars.com/api/?name={author.username}&background=065fd4&color=fff&size=64" if author else None,
+            "upload_date": video.upload_date.isoformat()
+        })
+    
+    return result
+
+@app.post("/api/vidic/{video_id}/like")
+async def like_vidic_video(
+    video_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Поставить/убрать лайк на Vidic видео"""
+    try:
+        print(f"👍 Лайк видео {video_id} от пользователя {current_user.username}")
+        
+        # Проверяем, существует ли видео
+        video = db.query(VidicVideo).filter(VidicVideo.id == video_id).first()
+        if not video:
+            raise HTTPException(status_code=404, detail="Vidic видео не найдено")
+        
+        # Проверяем, есть ли уже лайк от этого пользователя
+        existing_like = db.query(VidicLike).filter(
+            VidicLike.video_id == video_id,
+            VidicLike.user_id == current_user.id
+        ).first()
+        
+        if existing_like:
+            # Если лайк уже есть - удаляем
+            db.delete(existing_like)
+            db.commit()
+            likes_count = db.query(VidicLike).filter(VidicLike.video_id == video_id).count()
+            print(f"👎 Лайк убран. Всего лайков: {likes_count}")
+            return {
+                "liked": False,
+                "likes_count": likes_count
+            }
+        else:
+            # Создаем новый лайк
+            new_like = VidicLike(
+                video_id=video_id,
+                user_id=current_user.id
+            )
+            db.add(new_like)
+            db.commit()
+            likes_count = db.query(VidicLike).filter(VidicLike.video_id == video_id).count()
+            print(f"👍 Лайк поставлен. Всего лайков: {likes_count}")
+            return {
+                "liked": True,
+                "likes_count": likes_count
+            }
+            
+    except Exception as e:
+        print(f"❌ Ошибка при лайке: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/vidic/{video_id}/likes")
+def get_vidic_likes(
+    video_id: int,
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Получить количество лайков"""
+    
+    likes_count = db.query(VidicLike).filter(VidicLike.video_id == video_id).count()
+    
+    is_liked = False
+    if current_user:
+        existing_like = db.query(VidicLike).filter(
+            VidicLike.video_id == video_id,
+            VidicLike.user_id == current_user.id
+        ).first()
+        is_liked = existing_like is not None
+    
+    return {
+        "likes_count": likes_count,
+        "is_liked": is_liked
+    }
+
+# main.py - добавьте эндпоинт для получения Vidic видео канала
+
+@app.get("/api/channel/{user_id}/vidic")
+def get_channel_vidic_videos(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """Получить Vidic видео пользователя"""
+    
+    videos = db.query(VidicVideo).filter(
+        VidicVideo.author_id == user_id,
+        VidicVideo.is_processed == True
+    ).order_by(VidicVideo.upload_date.desc()).all()
+    
+    result = []
+    for video in videos:
+        # Формируем URL
+        video_url = None
+        if video.hls_playlist_path:
+            video_url = f"http://localhost:8000/{video.hls_playlist_path.replace(chr(92), '/')}"
+        elif video.file_path:
+            video_url = f"http://localhost:8000/{video.file_path.replace(chr(92), '/')}"
+        
+        # Получаем миниатюру
+        thumbnail = f"http://localhost:8000/media/vidic_thumbnails/{video.id}.jpg"
+        
+        result.append({
+            "id": video.id,
+            "title": video.title,
+            "description": video.description or "",
+            "video_url": video_url,
+            "views": video.views or 0,
+            "likes": video.likes or 0,
+            "author_id": video.author_id,
+            "author": video.author.username if video.author else "Unknown",
+            "thumbnail": thumbnail,
+            "upload_date": video.upload_date.isoformat()
+        })
+    
+    return result

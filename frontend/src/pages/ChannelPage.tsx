@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import VideoCard from '../components/VideoCard';
+import VidicCard from '../components/VidicCard';
 import SubscribeButton from '../components/SubscribeButton';
 import { useAuth } from '../context/AuthContext';
 import ImageCropModal from '../components/ImageCropModal';
@@ -38,16 +39,30 @@ interface Playlist {
   videos_count: number;
 }
 
+interface VidicVideo {
+  id: number;
+  title: string;
+  description?: string;
+  views: number;
+  upload_date: string;
+  author: string;
+  author_id: number;
+  thumbnail?: string;
+  video_url: string;
+}
+
 const ChannelPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser, token } = useAuth();
 
   const [channel, setChannel] = useState<ChannelData | null>(null);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [vidicVideos, setVidicVideos] = useState<VidicVideo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingVidic, setLoadingVidic] = useState(false);
   const [error, setError] = useState('');
 
-  const [activeTab, setActiveTab] = useState<'videos' | 'playlists'>('videos');
+  const [activeTab, setActiveTab] = useState<'videos' | 'playlists' | 'vidic'>('videos');
 
   const [showAvatarCrop, setShowAvatarCrop] = useState(false);
   const [showBannerCrop, setShowBannerCrop] = useState(false);
@@ -67,9 +82,30 @@ const ChannelPage: React.FC = () => {
     }
   };
 
+  // Загрузка Vidic видео канала
+  const fetchVidicVideos = async () => {
+    setLoadingVidic(true);
+    try {
+      const response = await axios.get(`http://localhost:8000/api/channel/${id}/vidic`);
+      setVidicVideos(response.data);
+    } catch (err) {
+      console.error('Ошибка загрузки Vidic видео:', err);
+      setVidicVideos([]);
+    } finally {
+      setLoadingVidic(false);
+    }
+  };
+
   useEffect(() => {
     if (id) fetchChannel();
   }, [id]);
+
+  // Загружаем Vidic видео когда активна соответствующая вкладка
+  useEffect(() => {
+    if (activeTab === 'vidic' && id) {
+      fetchVidicVideos();
+    }
+  }, [activeTab, id]);
 
   // Загрузка плейлистов (только для своего канала)
   useEffect(() => {
@@ -211,11 +247,21 @@ const ChannelPage: React.FC = () => {
             Плейлисты ({playlists.length})
           </button>
         )}
+
+        {isOwnChannel && (
+          <button
+            className={`tab ${activeTab === 'vidic' ? 'active' : ''}`}
+            onClick={() => setActiveTab('vidic')}
+          >
+            Vidic
+          </button>
+        )}
       </div>
 
       {/* === КОНТЕНТ ВКЛАДОК === */}
       <section className="channel-content">
-        {activeTab === 'videos' ? (
+        {/* Вкладка "Видео" */}
+        {activeTab === 'videos' && (
           channel.videos.length === 0 ? (
             <p>На канале пока нет видео</p>
           ) : (
@@ -236,8 +282,10 @@ const ChannelPage: React.FC = () => {
               ))}
             </div>
           )
-        ) : (
-          // === ВКЛАДКА ПЛЕЙЛИСТОВ (полностью восстановлена) ===
+        )}
+
+        {/* Вкладка "Плейлисты" */}
+        {activeTab === 'playlists' && (
           <>
             {playlists.length === 0 ? (
               <p>У вас пока нет плейлистов.</p>
@@ -268,6 +316,45 @@ const ChannelPage: React.FC = () => {
               </button>
             )}
           </>
+        )}
+
+        {/* Вкладка "Vidic" - ИСПОЛЬЗУЕМ VidiCard */}
+        {activeTab === 'vidic' && (
+          <div className="vidic-tab-content">
+            <div className="vidic-tab-header">
+              <h2>📱 Vidic видео</h2>
+              <p className="vidic-tab-desc">Вертикальные видео короткого формата</p>
+            </div>
+            
+            {loadingVidic ? (
+              <div className="loading-spinner">Загрузка...</div>
+            ) : vidicVideos.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">📱</div>
+                <p>Пока нет вертикальных видео</p>
+                {isOwnChannel && (
+                  <Link to="/upload/vidic" className="upload-vidic-btn">
+                    Загрузить первое Vidic видео
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div className="vidic-grid">
+                {vidicVideos.map((video) => (
+                  <VidicCard
+                    key={video.id}
+                    id={video.id}
+                    title={video.title}
+                    views={video.views}
+                    upload_date={video.upload_date}
+                    author_id={video.author_id}
+                    author={video.author}
+                    thumbnail={video.thumbnail}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </section>
 

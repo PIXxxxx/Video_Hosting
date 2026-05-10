@@ -42,6 +42,47 @@ class Video(Base):
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     author = relationship("User", back_populates="videos")
 
+class VidicVideo(Base):
+    __tablename__ = "vidic_videos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    tags = Column(String, nullable=True)
+    file_path = Column(String(500))  # путь к исходнику
+    hls_playlist_path = Column(String(500), nullable=True)  # путь к HLS
+    upload_date = Column(DateTime, default=datetime.utcnow)
+    is_processed = Column(Boolean, default=False)
+    views = Column(Integer, default=0)
+    likes = Column(Integer, default=0)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    author = relationship("User", backref="vidic_videos")
+
+class VidicLike(Base):
+    __tablename__ = "vidic_likes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    video_id = Column(Integer, ForeignKey("vidic_videos.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+    video = relationship("VidicVideo")
+
+
+class VidicComment(Base):
+    __tablename__ = "vidic_comments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    video_id = Column(Integer, ForeignKey("vidic_videos.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+    video = relationship("VidicVideo", backref="comments")
+
 class Like(models.Base):
     __tablename__ = "likes"
     id = Column(Integer, primary_key=True, index=True)

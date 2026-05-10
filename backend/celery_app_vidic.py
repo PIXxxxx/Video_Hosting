@@ -1,3 +1,4 @@
+# celery_app_vidic.py
 from celery import Celery
 import subprocess
 import os
@@ -7,13 +8,13 @@ sys.path.append(os.path.dirname(__file__))
 
 FFMPEG_PATH = r"C:\ffmpeg\bin\ffmpeg.exe"
 
-celery_app = Celery(
-    'tasks',
-    broker='redis://localhost:6379/0',
-    backend='redis://localhost:6379/0'
+celery_vidic_app = Celery(
+    'vidic_tasks',
+    broker='redis://localhost:6379/2',  # отдельная БД
+    backend='redis://localhost:6379/2'
 )
 
-celery_app.conf.update(
+celery_vidic_app.conf.update(
     task_serializer='json',
     accept_content=['json'],
     result_serializer='json',
@@ -21,9 +22,9 @@ celery_app.conf.update(
     enable_utc=True,
 )
 
-os.makedirs("media/videos", exist_ok=True)
-os.makedirs("media/thumbnails", exist_ok=True)
-os.makedirs("uploads", exist_ok=True)
+os.makedirs("media/vidic_videos", exist_ok=True)
+os.makedirs("media/vidic_thumbnails", exist_ok=True)
+os.makedirs("vidic_uploads", exist_ok=True)
 
 def get_db_session():
     from database import SessionLocal
@@ -34,20 +35,21 @@ def has_audio_stream(file_path):
     result = subprocess.run(cmd, capture_output=True, text=True)
     return 'Audio:' in result.stderr
 
-@celery_app.task(bind=True, name='process_video_task')
-def process_video_task(self, video_id, input_path):
-    """Оптимизированная обработка видео: FFmpeg + Shaka Packager"""
+@celery_vidic_app.task(bind=True, name='process_vidic_task')
+def process_vidic_task(self, video_id, input_path):
+    """Специальная обработка для вертикальных Vidic видео"""
     
     print(f"\n{'='*85}")
-    print(f"🎬 ОБРАБОТКА ВИДЕО {video_id}")
+    print(f"📱 VIDIC ОБРАБОТКА ВИДЕО {video_id}")
     print(f"{'='*85}")
 
     if not os.path.exists(input_path):
         print("❌ Входной файл не найден!")
         return {'status': 'failed'}
 
-    video_dir = f"media/videos/{video_id}/"
-    thumbnails_dir = "media/thumbnails/"
+    # ВЕРТИКАЛЬНЫЕ РАЗРЕШЕНИЯ (9:16)
+    video_dir = f"media/vidic_videos/{video_id}/"
+    thumbnails_dir = "media/vidic_thumbnails/"
     
     os.makedirs(video_dir, exist_ok=True)
     os.makedirs(thumbnails_dir, exist_ok=True)
@@ -55,14 +57,15 @@ def process_video_task(self, video_id, input_path):
     master_playlist = os.path.join(video_dir, "master.m3u8")
     thumbnail_path = os.path.join(thumbnails_dir, f"{video_id}.jpg")
 
-    # ========== 1. Кодирование разных качеств (ОДИН РАЗ) ==========
-    print("\n🔄 [1/2] Кодирование видео в разные качества...")
+    # ========== 1. Кодирование вертикальных качеств ==========
+    print("\n🔄 [1/2] Кодирование VERTICAL видео...")
     
+    # Важно: вертикальные разрешения!
     renditions = [
-        {"name": "360p",  "width": 640,  "height": 360,  "bitrate": "800k",  "maxrate": "856k",  "bufsize": "1200k"},
-        {"name": "480p",  "width": 854,  "height": 480,  "bitrate": "1400k", "maxrate": "1498k", "bufsize": "2100k"},
-        {"name": "720p",  "width": 1280, "height": 720,  "bitrate": "2800k", "maxrate": "2996k", "bufsize": "4200k"},
-        {"name": "1080p", "width": 1920, "height": 1080, "bitrate": "5000k", "maxrate": "5350k", "bufsize": "7500k"},
+        {"name": "360p",  "width": 360,  "height": 640,  "bitrate": "800k",  "maxrate": "856k",  "bufsize": "1200k"},
+        {"name": "480p",  "width": 480,  "height": 854,  "bitrate": "1200k", "maxrate": "1284k", "bufsize": "1800k"},
+        {"name": "720p",  "width": 720,  "height": 1280, "bitrate": "2500k", "maxrate": "2675k", "bufsize": "3750k"},
+        {"name": "1080p", "width": 1080, "height": 1920, "bitrate": "4500k", "maxrate": "4815k", "bufsize": "6750k"},
     ]
 
     for r in renditions:
@@ -89,7 +92,7 @@ def process_video_task(self, video_id, input_path):
             output_mp4
         ]
 
-        print(f"   → Кодирую {r['name']} ({r['bitrate']})...")
+        print(f"   → Кодирую {r['name']} ({r['width']}x{r['height']})...")
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=480)
             if result.returncode == 0 and os.path.exists(output_mp4):
@@ -110,7 +113,6 @@ def process_video_task(self, video_id, input_path):
         os.makedirs(os.path.join(video_dir, r['name']), exist_ok=True)
     os.makedirs(os.path.join(video_dir, "audio"), exist_ok=True)
 
-    # Формируем команду Packager (динамически)
     packager_inputs = []
     for r in renditions:
         packager_inputs.append(
@@ -119,8 +121,6 @@ def process_video_task(self, video_id, input_path):
             f"segment_template={video_dir}{r['name']}/$Number$.m4s"
         )
     
-    # Добавляем аудио (из 1080p)
-    # TODO: Протестить проверку на наличие аудио в видео
     if has_audio_stream(input_path):
         packager_inputs.append(
             f"in={video_dir}1080p.mp4,stream=audio,"
@@ -130,7 +130,7 @@ def process_video_task(self, video_id, input_path):
     
     packager_cmd = [
         r"..\packager.exe",
-        *packager_inputs,  # распаковываем список
+        *packager_inputs,
         "--generate_static_live_mpd",
         "--hls_master_playlist_output", master_playlist,
         "--segment_duration", "6",
@@ -157,12 +157,12 @@ def process_video_task(self, video_id, input_path):
     except Exception as e:
         print(f"   ❌ Исключение: {e}")
 
-    # ========== 3. Миниатюра ==========
-    print("\n🖼️ Создание миниатюры...")
+    # ========== 3. Вертикальная миниатюра ==========
+    print("\n🖼️ Создание вертикальной миниатюры...")
     cmd_thumb = [
         FFMPEG_PATH, '-i', input_path,
         '-ss', '00:00:03', '-vframes', '1',
-        '-vf', 'scale=1280:-1',
+        '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280',
         '-y', thumbnail_path
     ]
     
@@ -176,17 +176,34 @@ def process_video_task(self, video_id, input_path):
     # ========== 4. Обновление БД ==========
     db = get_db_session()
     try:
-        from models import Video
-        video = db.query(Video).filter(Video.id == video_id).first()
+        from models import VidicVideo  # Используем Video, не VidicVideo!
+        video = db.query(VidicVideo).filter(VidicVideo.id == video_id).first()
+        
+        print(f"🔍 Найдено видео в БД: {video is not None}")
+        print(f"📊 hls_success: {hls_success}")
+        
         if video and hls_success:
-            video.hls_playlist_path = f"media/videos/{video_id}/master.m3u8"
+            video.hls_playlist_path = f"media/vidic_videos/{video_id}/master.m3u8"
             video.is_processed = True
+            # video.is_vertical уже True
             db.commit()
-            print(f"\n✅ Видео {video_id} успешно обработано")
+            print(f"\n✅ Vidic видео {video_id} успешно обработано!")
+            print(f"📁 HLS путь сохранен: {video.hls_playlist_path}")
+            
+            # Удаляем исходный файл
+            if os.path.exists(input_path):
+                os.remove(input_path)
+                print(f"🗑️ Исходный файл удален: {input_path}")
+        else:
+            print(f"⚠️ Видео {video_id} не найдено или HLS не создан")
+            if not video:
+                print(f"   → Видео с id={video_id} не существует в БД")
+            if not hls_success:
+                print(f"   → HLS не создан")
     except Exception as e:
         print(f"❌ Ошибка БД: {e}")
+        import traceback
+        traceback.print_exc()
         db.rollback()
     finally:
         db.close()
-
-    return {'status': 'processed' if hls_success else 'failed'}
