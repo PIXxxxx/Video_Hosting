@@ -12,7 +12,7 @@ from database import get_db
 
 SECRET_KEY = "your-super-secret-key-change-this-to-something-very-long-and-random-123456789"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 300000
 
 # Хеширование паролей
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

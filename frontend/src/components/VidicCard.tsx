@@ -38,7 +38,6 @@ const VidicCard: React.FC<VidicCardProps> = ({
             e.currentTarget.src = 'https://via.placeholder.com/720x1280/1a1a1a/ffffff?text=Vidic';
           }}
         />
-        <div className="vidic-card-badge">📱</div>
       </div>
       <div className="vidic-card-info">
         <h3>{title}</h3>

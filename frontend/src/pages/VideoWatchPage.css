@@ -1,6 +1,4 @@
-/* VideoWatchPage.css - Современный YouTube стиль */
-/* Использует переменные из theme.css, не переопределяет :root */
-
+/* VideoWatchPage.css - Чистый YouTube стиль */
 .video-watch-page {
   background: var(--yt-bg-primary);
   min-height: 100vh;
@@ -16,14 +14,12 @@
   margin: 0 auto;
 }
 
-/* Левая колонка с видео */
 .left-column {
   flex: 1;
   min-width: 0;
   max-width: calc(100% - 420px);
 }
 
-/* Правая колонка с рекомендациями */
 .right-column {
   width: 400px;
   flex-shrink: 0;
@@ -63,43 +59,40 @@
   font-size: 16px;
 }
 
-/* ====================== ИНФОРМАЦИЯ О ВИДЕО ====================== */
+/* ====================== ИНФОРМАЦИЯ ====================== */
 .video-info-section {
-  padding: 20px 0;
+  padding: 16px 0;
 }
 
-.video-info-section h1 {
+.video-title {
   font-size: 20px;
   font-weight: 600;
   line-height: 1.4;
-  margin: 0 0 8px 0;
+  margin: 0 0 12px 0;
   color: var(--yt-text-primary);
+  word-break: break-word;
 }
 
-/* Статистика */
-.video-meta {
-  margin-bottom: 16px;
-}
-
-.video-stats {
-  color: var(--yt-text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-}
-
-/* Блок автора */
-.author-section {
+/* ====================== АВТОР ====================== */
+.author-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 0;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .author-info {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+}
+
+.author-avatar-link {
+  flex-shrink: 0;
+  text-decoration: none;
 }
 
 .author-avatar {
@@ -108,7 +101,6 @@
   border-radius: 50%;
   overflow: hidden;
   background: var(--yt-bg-tertiary);
-  flex-shrink: 0;
 }
 
 .author-avatar img {
@@ -134,6 +126,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .author-name {
@@ -141,11 +134,13 @@
   font-weight: 500;
   color: var(--yt-text-primary);
   text-decoration: none;
-  transition: color 0.2s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .author-name:hover {
-  color: var(--yt-text-primary);
+  text-decoration: underline;
 }
 
 .author-subs {
@@ -153,119 +148,165 @@
   color: var(--yt-text-secondary);
 }
 
-/* Панель действий */
-.actions-bar {
+/* ====================== ДЕЙСТВИЯ ====================== */
+.video-actions-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
-/* Контейнер лайков */
 .like-container {
   display: flex;
   align-items: center;
   background: var(--yt-bg-tertiary);
   border-radius: 24px;
   overflow: hidden;
-  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.like-container:hover {
+  background: var(--yt-bg-hover);
 }
 
 .like-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: none;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  height: 36px;
+  background: none !important;
+  background-color: transparent !important;
   border: none;
   color: var(--yt-text-primary);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
+  transition: color 0.2s ease;
+  white-space: nowrap;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1;
+}
+
+.like-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: block;
+  vertical-align: middle;
+}
+
+.like-btn span {
+  font-size: 14px;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .like-btn:hover {
-  background: var(--yt-bg-hover);
+  background: none !important;
+  background-color: transparent !important;
 }
 
+.like-btn:focus,
+.like-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+/* АКТИВНЫЙ ЛАЙК */
 .like-btn.active {
-  color: var(--yt-text-primary);
+  color: var(--yt-accent) !important;
   font-weight: 600;
 }
 
-.like-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 20px;
-  height: 2px;
-  background: var(--yt-text-primary);
-  border-radius: 1px;
+.like-btn.active svg {
+  color: var(--yt-accent) !important;
+  fill: var(--yt-accent) !important;
 }
 
 .like-divider {
   width: 1px;
   height: 24px;
   background: var(--yt-border);
+  flex-shrink: 0;
+}
+
+.dislike-btn {
+  padding: 0 16px;
 }
 
 /* Кнопки действий */
 .action-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 10px 16px;
-  background: var(--yt-bg-tertiary);
+  height: 36px;
+  padding: 0 16px;
+  background: var(--yt-bg-tertiary) !important;
   border: none;
   border-radius: 24px;
   color: var(--yt-text-primary);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
   text-decoration: none;
-}
-
-.action-btn:hover {
-  background: var(--yt-bg-hover);
+  flex-shrink: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s ease;
+  line-height: 1;
 }
 
 .action-btn svg {
   width: 20px;
   height: 20px;
-  opacity: 0.9;
+  flex-shrink: 0;
+  display: block;
+  vertical-align: middle;
 }
 
-.edit-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--yt-bg-tertiary);
-  border-radius: 24px;
-  color: var(--yt-text-primary);
-  text-decoration: none;
+.action-btn span {
+  white-space: nowrap;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.action-btn:hover {
+  background: var(--yt-bg-hover) !important;
+}
+
+.action-btn:focus,
+.action-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* ====================== СТАТИСТИКА ====================== */
+.video-stats-row {
+  margin-bottom: 16px;
+}
+
+.video-stats {
+  color: var(--yt-text-secondary);
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.2s ease;
 }
 
-.edit-btn:hover {
-  background: var(--yt-bg-hover);
-}
-
-/* Блок описания */
+/* ====================== ОПИСАНИЕ ====================== */
 .description-box {
   background: var(--yt-bg-secondary);
   border-radius: 12px;
-  padding: 16px;
+  padding: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease;
   margin-bottom: 24px;
 }
 
@@ -279,6 +320,7 @@
   color: var(--yt-text-primary);
   white-space: pre-wrap;
   margin: 0;
+  word-break: break-word;
 }
 
 .description-text.clamped {
@@ -323,42 +365,7 @@
   gap: 12px;
 }
 
-/* Стили для видео-карточек в рекомендациях */
-.related-list .video-card {
-  flex-direction: row;
-  gap: 8px;
-}
-
-.related-list .thumbnail-container {
-  width: 168px;
-  flex-shrink: 0;
-  aspect-ratio: 16 / 9;
-  border-radius: 8px;
-}
-
-.related-list .video-info {
-  padding: 0;
-  gap: 0;
-}
-
-.related-list .author-avatar {
-  display: none;
-}
-
-.related-list .video-info h3 {
-  font-size: 14px;
-  -webkit-line-clamp: 2;
-}
-
-.related-list .video-info p {
-  font-size: 12px;
-}
-
-.related-list .author-link {
-  font-size: 12px;
-}
-
-/* ====================== МОДАЛЬНОЕ ОКНО ====================== */
+/* ====================== МОДАЛКА ====================== */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -385,7 +392,7 @@
   color: var(--yt-text-primary);
 }
 
-/* ====================== ЗАГРУЗКА И ОШИБКИ ====================== */
+/* ====================== ЗАГРУЗКА ====================== */
 .loading-container {
   display: flex;
   align-items: center;
@@ -437,7 +444,6 @@
 @media (max-width: 992px) {
   .main-layout {
     flex-direction: column;
-    gap: 24px;
   }
   
   .left-column {
@@ -449,29 +455,6 @@
     position: static;
     max-height: none;
   }
-  
-  .related-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-  }
-  
-  .related-list .video-card {
-    flex-direction: column;
-  }
-  
-  .related-list .thumbnail-container {
-    width: 100%;
-  }
-  
-  .related-list .author-avatar {
-    display: flex;
-  }
-  
-  .related-list .video-info {
-    padding: 8px 8px 0 0;
-    gap: 8px;
-  }
 }
 
 @media (max-width: 768px) {
@@ -479,34 +462,34 @@
     padding: 12px 16px;
   }
   
-  .video-info-section h1 {
+  .video-title {
     font-size: 18px;
   }
   
-  .author-section {
-    flex-direction: column;
-    align-items: flex-start;
+  .author-row {
     gap: 12px;
   }
   
-  .actions-bar {
-    width: 100%;
-    justify-content: flex-start;
+  .video-actions-row {
+    gap: 8px;
   }
   
-  .like-btn,
-  .action-btn,
-  .edit-btn {
-    font-size: 13px;
-    padding: 8px 12px;
+  .action-btn span {
+    display: none;
+  }
+  
+  .action-btn {
+    padding: 0 12px;
+    min-width: 36px;
+    justify-content: center;
+  }
+  
+  .like-btn {
+    padding: 0 12px;
   }
   
   .description-box {
     padding: 12px;
-  }
-  
-  .related-list {
-    grid-template-columns: 1fr;
   }
   
   .modal {
@@ -516,19 +499,15 @@
 }
 
 @media (max-width: 480px) {
-  .video-info-section h1 {
+  .video-title {
     font-size: 16px;
-  }
-  
-  .video-stats {
-    font-size: 13px;
   }
   
   .author-name {
     font-size: 14px;
   }
   
-  .like-container {
-    font-size: 12px;
+  .like-btn span {
+    font-size: 13px;
   }
 }

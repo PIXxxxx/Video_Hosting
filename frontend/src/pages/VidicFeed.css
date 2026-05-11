@@ -3,12 +3,9 @@
   height: 100vh;
   overflow-y: scroll;
   scroll-snap-type: y mandatory;
-  background: #000;
+  background: var(--yt-bg-primary);
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   z-index: 1;
 }
 
@@ -20,166 +17,361 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: var(--yt-bg-primary);
 }
 
-/* Оверлей с информацией */
-.vidic-overlay {
+/* Информация снизу */
+.vidic-info-overlay {
   position: absolute;
-  bottom: 20px;
+  bottom: 80px;
   left: 16px;
   right: 80px;
-  z-index: 15;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
+  z-index: 20;
   color: white;
   pointer-events: none;
 }
 
-.vidic-info {
-  flex: 1;
+.vidic-author-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
   pointer-events: auto;
 }
 
-.vidic-author {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
+.vidic-author-avatar-wrapper {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
 }
 
-.vidic-author img {
-  width: 40px;
-  height: 40px;
+.vidic-author-avatar {
+  width: 36px; 
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid white;
+  border: 2px solid rgba(255,255,255,0.8);
 }
 
-.vidic-author h4 {
-  margin: 0;
-  font-size: 15px;
+.vidic-default-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  font-size: 16px;
   font-weight: 600;
+  text-transform: uppercase;
+  border: 2px solid rgba(255,255,255,0.8);
 }
 
-.vidic-author p {
-  margin: 2px 0 0;
-  font-size: 13px;
-  opacity: 0.9;
+.vidic-default-avatar.hidden {
+  display: none;
 }
 
-.vidic-description {
-  font-size: 13px;
-  opacity: 0.8;
-  margin: 4px 0 0;
+.vidic-author-name {
+  font-size: 14px; 
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.vidic-subscribe-btn {
+  padding: 8px 16px;
+  background: #ff0000;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.vidic-subscribe-btn:hover { 
+  background: #cc0000; 
+}
+
+.vidic-subscribe-btn.subscribed { 
+  background: rgba(255,255,255,0.2); 
+}
+
+.vidic-title {
+  font-size: 15px; 
+  font-weight: 500;
+  margin: 0 0 4px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.vidic-description-text {
+  font-size: 13px; 
+  opacity: 0.85; 
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* Боковые действия */
-.vidic-actions {
+/* Панель комментариев */
+.vidic-comments-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  height: 60%;
+  background: var(--yt-bg-secondary);
+  backdrop-filter: blur(20px);
+  border-radius: 16px 16px 0 0;
+  z-index: 50;
+  animation: slideUp 0.3s ease;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  align-items: center;
-  pointer-events: auto;
+  border: 1px solid var(--yt-border);
 }
 
-.action-btn {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  border: none;
-  border-radius: 50%;
-  width: 44px;
-  height: 44px;
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.vidic-comments-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--yt-border);
+  flex-shrink: 0;
+}
+
+.vidic-comments-header h3 {
+  color: var(--yt-text-primary);
+  margin: 0;
+  font-size: 18px;
+}
+
+.vidic-comments-header button {
+  background: none;
+  border: none;
+  color: var(--yt-text-primary);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  width: 36px; height: 36px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: transform 0.2s;
-  color: white;
-  text-decoration: none;
 }
 
-.action-btn:hover {
-  transform: scale(1.1);
-  background: rgba(0, 0, 0, 0.7);
+.vidic-comments-header button:hover { 
+  background: var(--yt-bg-hover); 
 }
 
-.action-btn .icon {
-  font-size: 22px;
+.vidic-comments-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
 }
 
-.action-btn .count {
-  font-size: 11px;
-  margin-top: 2px;
+.vidic-no-comments {
+  color: var(--yt-text-secondary);
+  text-align: center;
+  margin-top: 40px;
 }
 
-.action-btn.like.active .icon {
-  animation: heartBeat 0.3s ease;
+.vidic-comment-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--yt-border);
 }
 
-@keyframes heartBeat {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.3); }
-  100% { transform: scale(1); }
+.vidic-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
-.action-btn.author {
-  padding: 0;
-  overflow: hidden;
+.vidic-comment-avatar-wrapper {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
 }
 
-.action-btn.author img {
-  width: 44px;
-  height: 44px;
+.vidic-comment-avatar {
+  width: 32px; 
+  height: 32px;
+  border-radius: 50%;
   object-fit: cover;
 }
 
-/* Состояния загрузки */
-.vidic-loading,
-.vidic-error,
+.vidic-comment-default-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.vidic-comment-default-avatar.hidden {
+  display: none;
+}
+
+.vidic-comment-username {
+  color: var(--yt-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.vidic-comment-time {
+  color: var(--yt-text-secondary);
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.vidic-comment-text {
+  color: var(--yt-text-primary);
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.vidic-comment-form {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--yt-border);
+  flex-shrink: 0;
+}
+
+.vidic-comment-input {
+  flex: 1;
+  background: var(--yt-bg-tertiary);
+  border: 1px solid var(--yt-border);
+  border-radius: 20px;
+  padding: 10px 16px;
+  color: var(--yt-text-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+.vidic-comment-input::placeholder {
+  color: var(--yt-text-secondary);
+}
+
+.vidic-comment-input:focus {
+  border-color: var(--yt-accent);
+}
+
+.vidic-comment-send {
+  background: var(--yt-accent);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px; 
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.vidic-comment-send:hover {
+  background: var(--yt-accent-hover);
+}
+
+.vidic-auth-hint {
+  color: var(--yt-text-secondary);
+  text-align: center;
+  padding: 16px;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Состояния */
+.loading-spinner {
+  width: 48px; height: 48px;
+  border: 4px solid var(--yt-border);
+  border-top-color: var(--yt-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin { 
+  to { transform: rotate(360deg); } 
+}
+
+.vidic-loading, 
+.vidic-error, 
 .vidic-empty {
   height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: white;
-  background: #0f0f0f;
+  color: var(--yt-text-primary);
+  background: var(--yt-bg-primary);
   text-align: center;
 }
 
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #ff0000;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
+.vidic-loading p,
+.vidic-error p,
+.vidic-empty p,
+.vidic-empty h3 {
+  color: var(--yt-text-primary);
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
+.empty-icon { 
+  font-size: 64px; 
+  margin-bottom: 20px; 
 }
 
 .upload-link {
   display: inline-block;
   margin-top: 20px;
   padding: 12px 24px;
-  background: #ff0000;
+  background: var(--yt-accent);
   color: white;
   text-decoration: none;
   border-radius: 24px;
   font-weight: 600;
+}
+
+.upload-link:hover {
+  opacity: 0.9;
+}
+
+/* Десктоп - комментарии справа */
+@media (min-width: 769px) {
+  .vidic-comments-panel {
+    left: auto;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    height: 100%;
+    width: 380px;
+    border-radius: 16px 0 0 16px;
+    animation: slideRight 0.3s ease;
+  }
+  
+  @keyframes slideRight {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
 }

@@ -54,9 +54,15 @@ const EditIcon = () => (
   </svg>
 );
 
+const ShareIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+  </svg>
+);
+
 const VideoWatchPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, token } = useAuth();
 
   const [video, setVideo] = useState<Video | null>(null);
   const [relatedVideos, setRelatedVideos] = useState<Video[]>([]);
@@ -70,20 +76,26 @@ const VideoWatchPage: React.FC = () => {
   const [authorData, setAuthorData] = useState<AuthorData | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
+  // Создаём экземпляр axios с авторизацией
+  const api = axios.create({
+    baseURL: 'http://localhost:8000',
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [videoRes, relatedRes, likesRes] = await Promise.all([
-          axios.get(`http://localhost:8000/api/video/${id}`),
-          axios.get('http://localhost:8000/api/videos', { params: { skip: 0, limit: 20 } }),
-          axios.get(`http://localhost:8000/api/video/${id}/likes`)
+          api.get(`/api/video/${id}`),
+          api.get('/api/videos', { params: { skip: 0, limit: 20 } }),
+          api.get(`/api/video/${id}/likes`)
         ]);
 
         const videoData = videoRes.data;
         setVideo(videoData);
         
         try {
-          const authorRes = await axios.get(`http://localhost:8000/api/channel/${videoData.author_id}`);
+          const authorRes = await api.get(`/api/channel/${videoData.author_id}`);
           setAuthorData(authorRes.data);
         } catch (err) {
           console.error('Ошибка загрузки данных автора:', err);
@@ -92,8 +104,10 @@ const VideoWatchPage: React.FC = () => {
         const filtered = relatedRes.data.filter((v: Video) => v.id !== Number(id));
         setRelatedVideos(filtered.slice(0, 10));
 
+        // 🔥 Теперь user_like приходит в ответе /likes
         setLikes(likesRes.data.likes);
         setDislikes(likesRes.data.dislikes);
+        setUserLikeStatus(likesRes.data.user_like ?? null);
 
         setLoading(false);
       } catch (err) {
@@ -104,14 +118,14 @@ const VideoWatchPage: React.FC = () => {
     };
 
     if (id) fetchData();
-  }, [id]);
+  }, [id, token]);
 
   useEffect(() => {
     const incrementView = async () => {
       if (id && !loading && !viewIncremented) {
         try {
-          await axios.post(`http://localhost:8000/api/video/${id}/view`);
-          const videoRes = await axios.get(`http://localhost:8000/api/video/${id}`);
+          await api.post(`/api/video/${id}/view`);
+          const videoRes = await api.get(`/api/video/${id}`);
           setVideo(videoRes.data);
           setViewIncremented(true);
         } catch (err) {
@@ -124,12 +138,17 @@ const VideoWatchPage: React.FC = () => {
   }, [id, loading, viewIncremented]);
 
   const toggleLike = async (isLike: boolean) => {
+    if (!token) {
+      alert('Войдите в аккаунт, чтобы оценивать видео');
+      return;
+    }
+
     try {
-      await axios.post(`http://localhost:8000/api/video/${id}/like`, { is_like: isLike });
-      const res = await axios.get(`http://localhost:8000/api/video/${id}/likes`);
+      await api.post(`/api/video/${id}/like`, { is_like: isLike });
+      const res = await api.get(`/api/video/${id}/likes`);
       setLikes(res.data.likes);
       setDislikes(res.data.dislikes);
-      setUserLikeStatus(isLike);
+      setUserLikeStatus(res.data.user_like ?? null);
     } catch (err) {
       console.error('Ошибка при голосовании:', err);
     }
@@ -141,6 +160,15 @@ const VideoWatchPage: React.FC = () => {
       return;
     }
     setShowPlaylistModal(true);
+  };
+
+  const handleShare = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      alert('Ссылка скопирована в буфер обмена!');
+    }).catch(() => {
+      prompt('Ссылка на видео:', url);
+    });
   };
 
   const formatViews = (views: number) => {
@@ -185,64 +213,23 @@ const VideoWatchPage: React.FC = () => {
 
           {/* Информация о видео */}
           <div className="video-info-section">
-            <h1>{video.title}</h1>
+            {/* Заголовок */}
+            <h1 className="video-title">{video.title}</h1>
             
-            <div className="video-meta">
-              <span className="video-stats">
-                {formatViews(video.views)} просмотров • {new Date(video.upload_date).toLocaleDateString('ru-RU', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                })}
-              </span>
-            </div>
-
-            
-
-            {/* Действия */}
-            <div className="actions-bar">
-              <div className="like-container">
-                <button
-                  className={`like-btn ${userLikeStatus === true ? 'active' : ''}`}
-                  onClick={() => toggleLike(true)}
-                >
-                  <LikeIcon />
-                  {likes > 0 && likes}
-                </button>
-                <div className="like-divider"></div>
-                <button
-                  className={`like-btn ${userLikeStatus === false ? 'active' : ''}`}
-                  onClick={() => toggleLike(false)}
-                >
-                  <DislikeIcon />
-                </button>
-              </div>
-
-              <button className="action-btn" onClick={handleAddToPlaylist}>
-                <PlaylistIcon />
-                Добавить в плейлист
-              </button>
-
-              {currentUser && currentUser.id === video.author_id && (
-                <Link to={`/video/${video.id}/edit`} className="edit-btn">
-                  <EditIcon />
-                  Редактировать
-                </Link>
-              )}
-            </div>
-
-            {/* Автор */}
-            <div className="author-section">
+            {/* Автор + Подписка */}
+            <div className="author-row">
               <div className="author-info">
-                <div className="author-avatar">
-                  {authorData?.avatar_url ? (
-                    <img src={authorData.avatar_url} alt={video.author || 'Автор'} />
-                  ) : (
-                    <div className="default-avatar">
-                      {getInitials(video.author || 'А')}
-                    </div>
-                  )}
-                </div>
+                <Link to={`/channel/${video.author_id}`} className="author-avatar-link">
+                  <div className="author-avatar">
+                    {authorData?.avatar_url ? (
+                      <img src={authorData.avatar_url} alt={video.author || 'Автор'} />
+                    ) : (
+                      <div className="default-avatar">
+                        {getInitials(video.author || 'А')}
+                      </div>
+                    )}
+                  </div>
+                </Link>
                 <div className="author-details">
                   <Link to={`/channel/${video.author_id}`} className="author-name">
                     {video.author || 'Аноним'}
@@ -250,10 +237,57 @@ const VideoWatchPage: React.FC = () => {
                   <span className="author-subs">Автор</span>
                 </div>
               </div>
-
+              
               {video.author_id && currentUser?.id !== video.author_id && (
                 <SubscribeButton authorId={video.author_id} />
               )}
+            </div>
+
+            {/* Действия */}
+            <div className="video-actions-row">
+              <div className="like-container">
+                <button
+                  className={`like-btn ${userLikeStatus === true ? 'active' : ''}`}
+                  onClick={() => toggleLike(true)}
+                  title="Нравится"
+                >
+                  <LikeIcon />
+                  <span>{likes > 0 ? likes : ''}</span>
+                </button>
+                <div className="like-divider"></div>
+                <button
+                  className={`like-btn dislike-btn ${userLikeStatus === false ? 'active' : ''}`}
+                  onClick={() => toggleLike(false)}
+                  title="Не нравится"
+                >
+                  <DislikeIcon />
+                </button>
+              </div>
+
+              <button className="action-btn" onClick={handleShare} title="Поделиться">
+                <ShareIcon />
+              </button>
+
+              <button className="action-btn" onClick={handleAddToPlaylist} title="Сохранить">
+                <PlaylistIcon />
+              </button>
+
+              {currentUser && currentUser.id === video.author_id && (
+                <Link to={`/video/${video.id}/edit`} className="action-btn" title="Редактировать">
+                  <EditIcon />
+                </Link>
+              )}
+            </div>
+
+            {/* Статистика */}
+            <div className="video-stats-row">
+              <span className="video-stats">
+                {formatViews(video.views)} просмотров • {new Date(video.upload_date).toLocaleDateString('ru-RU', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </span>
             </div>
 
             {/* Описание */}
@@ -265,8 +299,8 @@ const VideoWatchPage: React.FC = () => {
                 <p className={`description-text ${!descriptionExpanded ? 'clamped' : ''}`}>
                   {video.description}
                 </p>
-                {!descriptionExpanded && video.description.length > 200 && (
-                  <button className="show-more-btn">Показать больше</button>
+                {!descriptionExpanded && video.description.length > 150 && (
+                  <button className="show-more-btn">Ещё</button>
                 )}
               </div>
             )}
@@ -291,7 +325,6 @@ const VideoWatchPage: React.FC = () => {
                   author_id={v.author_id}
                   author={v.author}
                   compact={true}
-                  enableHoverPreview={true}
                   file_path={v.file_path}
                   thumbnail={v.thumbnail}
                 />
@@ -301,16 +334,14 @@ const VideoWatchPage: React.FC = () => {
         </aside>
       </div>
 
-      {/* Модалка добавления в плейлист */}
+      {/* Модалка */}
       {showPlaylistModal && (
         <div className="modal-overlay" onClick={() => setShowPlaylistModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <AddToPlaylistModal
               videoId={Number(id)}
               onClose={() => setShowPlaylistModal(false)}
-              onSuccess={() => {
-                setShowPlaylistModal(false);
-              }}
+              onSuccess={() => setShowPlaylistModal(false)}
             />
           </div>
         </div>

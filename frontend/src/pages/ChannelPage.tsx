@@ -51,6 +51,39 @@ interface VidicVideo {
   video_url: string;
 }
 
+// SVG иконки
+const LockIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+  </svg>
+);
+
+const PlaylistIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M22 10H2v4h20v-4zM22 6H2v2h20V6zM14 16H2v2h12v-2z"/>
+    <path d="M18 14v4h2v-4h-2zM18 14l3 2-3 2v-2z"/>
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+  </svg>
+);
+
+const EditIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75L20.71 7.04z"/>
+  </svg>
+);
+
+const VidicIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <circle cx="12" cy="12" r="3" fill="#ff0000"/>
+  </svg>
+);
+
 const ChannelPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser, token } = useAuth();
@@ -68,11 +101,14 @@ const ChannelPage: React.FC = () => {
   const [showBannerCrop, setShowBannerCrop] = useState(false);
   const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
 
-  // Загрузка данных канала
+  const api = axios.create({
+    baseURL: 'http://localhost:8000',
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+
   const fetchChannel = async () => {
     try {
       const res = await axios.get(`http://localhost:8000/api/channel/${id}`);
-      console.log('📥 Данные канала:', res.data);
       setChannel(res.data);
     } catch (err: any) {
       console.error('Ошибка загрузки канала:', err);
@@ -82,7 +118,6 @@ const ChannelPage: React.FC = () => {
     }
   };
 
-  // Загрузка Vidic видео канала
   const fetchVidicVideos = async () => {
     setLoadingVidic(true);
     try {
@@ -100,14 +135,12 @@ const ChannelPage: React.FC = () => {
     if (id) fetchChannel();
   }, [id]);
 
-  // Загружаем Vidic видео когда активна соответствующая вкладка
   useEffect(() => {
     if (activeTab === 'vidic' && id) {
       fetchVidicVideos();
     }
   }, [activeTab, id]);
 
-  // Загрузка плейлистов (только для своего канала)
   useEffect(() => {
     if (activeTab !== 'playlists' || !token || !currentUser || Number(id) !== currentUser.id) {
       return;
@@ -115,9 +148,7 @@ const ChannelPage: React.FC = () => {
 
     const fetchPlaylists = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/api/playlists/me', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get('/api/playlists/me');
         setPlaylists(res.data);
       } catch (err) {
         console.error('Ошибка загрузки плейлистов:', err);
@@ -129,7 +160,6 @@ const ChannelPage: React.FC = () => {
 
   const isOwnChannel = currentUser?.id === Number(id);
 
-  // Выбор файла для обрезки
   const handleFileSelect = (type: 'avatar' | 'banner') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -143,17 +173,16 @@ const ChannelPage: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Сохранение обрезанного изображения
   const handleCropComplete = async (file: File, type: 'avatar' | 'banner') => {
     const formData = new FormData();
     formData.append('file', file);
 
     try {
       const endpoint = type === 'avatar' ? '/api/me/avatar' : '/api/me/banner';
-      await axios.post(`http://localhost:8000${endpoint}`, formData, {
-        headers: { Authorization: `Bearer ${token}` }
+      await api.post(endpoint, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-      fetchChannel(); // обновляем данные канала
+      fetchChannel();
       alert(type === 'avatar' ? 'Аватарка успешно обновлена!' : 'Шапка канала успешно обновлена!');
     } catch (err: any) {
       console.error(err);
@@ -161,19 +190,24 @@ const ChannelPage: React.FC = () => {
     }
   };
 
+  const formatViews = (views: number) => {
+    if (views >= 1000000) return `${(views / 1000000).toFixed(1)} млн`;
+    if (views >= 1000) return `${(views / 1000).toFixed(1)} тыс.`;
+    return views.toString();
+  };
+
   if (loading) return <div className="loading">Загрузка канала...</div>;
   if (error || !channel) return <div className="error-message">{error || 'Канал не найден'}</div>;
 
-  // Полный URL для баннера
   const bannerUrl = channel.banner_url 
     ? (channel.banner_url.startsWith('http') 
         ? channel.banner_url 
-        : `http://localhost:8000/media/${channel.banner_url}`)
+        : `http://localhost:8000/${channel.banner_url}`)
     : null;
 
   return (
     <div className="channel-page">
-      {/* === ШАПКА КАНАЛА === */}
+      {/* Шапка канала */}
       <div 
         className="channel-header"
         style={{
@@ -199,71 +233,57 @@ const ChannelPage: React.FC = () => {
             
             {isOwnChannel && (
               <label className="edit-avatar-btn">
-                ✏️
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect('avatar')}
-                  style={{ display: 'none' }}
-                />
+                <EditIcon />
+                <input type="file" accept="image/*" onChange={handleFileSelect('avatar')} style={{ display: 'none' }} />
               </label>
             )}
           </div>
 
           <div className="channel-info">
             <h1>{channel.username}</h1>
-            <SubscribeButton authorId={channel.id} />
-            <p className="sub-count">{channel.videos_count} видео</p>
+            <div className="channel-meta">
+              <SubscribeButton authorId={channel.id} />
+              <span className="channel-stats">{channel.videos_count} видео</span>
+            </div>
           </div>
 
           {isOwnChannel && (
             <label className="edit-banner-btn">
+              <EditIcon />
               Изменить шапку
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect('banner')}
-                style={{ display: 'none' }}
-              />
+              <input type="file" accept="image/*" onChange={handleFileSelect('banner')} style={{ display: 'none' }} />
             </label>
           )}
         </div>
       </div>
 
-      {/* === ВКЛАДКИ === */}
+      {/* Вкладки */}
       <div className="channel-tabs">
-        <button
-          className={`tab ${activeTab === 'videos' ? 'active' : ''}`}
-          onClick={() => setActiveTab('videos')}
-        >
-          Видео ({channel.videos_count})
+        <button className={`tab ${activeTab === 'videos' ? 'active' : ''}`} onClick={() => setActiveTab('videos')}>
+          Видео
         </button>
 
         {isOwnChannel && (
-          <button
-            className={`tab ${activeTab === 'playlists' ? 'active' : ''}`}
-            onClick={() => setActiveTab('playlists')}
-          >
-            Плейлисты ({playlists.length})
+          <button className={`tab ${activeTab === 'playlists' ? 'active' : ''}`} onClick={() => setActiveTab('playlists')}>
+            Плейлисты
           </button>
         )}
 
         {isOwnChannel && (
-          <button
-            className={`tab ${activeTab === 'vidic' ? 'active' : ''}`}
-            onClick={() => setActiveTab('vidic')}
-          >
+          <button className={`tab ${activeTab === 'vidic' ? 'active' : ''}`} onClick={() => setActiveTab('vidic')}>
             Vidic
           </button>
         )}
       </div>
 
-      {/* === КОНТЕНТ ВКЛАДОК === */}
+      {/* Контент */}
       <section className="channel-content">
-        {/* Вкладка "Видео" */}
+        {/* Видео */}
         {activeTab === 'videos' && (
           channel.videos.length === 0 ? (
-            <p>На канале пока нет видео</p>
+            <div className="empty-state">
+              <p>На канале пока нет видео</p>
+            </div>
           ) : (
             <div className="video-grid">
               {channel.videos.map((video) => (
@@ -284,54 +304,49 @@ const ChannelPage: React.FC = () => {
           )
         )}
 
-        {/* Вкладка "Плейлисты" */}
+        {/* Плейлисты */}
         {activeTab === 'playlists' && (
           <>
             {playlists.length === 0 ? (
-              <p>У вас пока нет плейлистов.</p>
+              <div className="empty-state">
+                <PlaylistIcon />
+                <h3>У вас пока нет плейлистов</h3>
+                <p>Создайте плейлист, чтобы сохранять видео</p>
+              </div>
             ) : (
               <div className="playlists-grid">
                 {playlists.map((playlist) => (
-                  <Link
-                    key={playlist.id}
-                    to={`/playlist/${playlist.id}`}
-                    className="playlist-card"
-                  >
-                    <div className="playlist-thumbnail-placeholder">📚</div>
-                    <h3>{playlist.title}</h3>
-                    <p>{playlist.videos_count} видео</p>
-                    {playlist.is_private && <span className="private-badge">🔒 Приватный</span>}
+                  <Link key={playlist.id} to={`/playlist/${playlist.id}`} className="playlist-card">
+                    <div className="playlist-thumbnail">
+                      <PlaylistIcon />
+                      <span className="playlist-count">{playlist.videos_count}</span>
+                    </div>
+                    <div className="playlist-info">
+                      <h3>{playlist.title}</h3>
+                      <p>{playlist.videos_count} видео</p>
+                      {playlist.is_private && (
+                        <span className="private-badge">
+                          <LockIcon />
+                          Приватный
+                        </span>
+                      )}
+                    </div>
                   </Link>
                 ))}
               </div>
             )}
-
-            {isOwnChannel && (
-              <button 
-                className="create-playlist-btn"
-                onClick={() => alert('Форма создания плейлиста будет здесь')}
-                style={{ marginTop: '20px' }}
-              >
-                + Создать новый плейлист
-              </button>
-            )}
           </>
         )}
 
-        {/* Вкладка "Vidic" - ИСПОЛЬЗУЕМ VidiCard */}
+        {/* Vidic */}
         {activeTab === 'vidic' && (
           <div className="vidic-tab-content">
-            <div className="vidic-tab-header">
-              <h2>📱 Vidic видео</h2>
-              <p className="vidic-tab-desc">Вертикальные видео короткого формата</p>
-            </div>
-            
             {loadingVidic ? (
-              <div className="loading-spinner">Загрузка...</div>
+              <div className="loading">Загрузка...</div>
             ) : vidicVideos.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-icon">📱</div>
-                <p>Пока нет вертикальных видео</p>
+                <VidicIcon />
+                <h3>Пока нет вертикальных видео</h3>
                 {isOwnChannel && (
                   <Link to="/upload/vidic" className="upload-vidic-btn">
                     Загрузить первое Vidic видео
@@ -358,7 +373,7 @@ const ChannelPage: React.FC = () => {
         )}
       </section>
 
-      {/* === МОДАЛКИ ОБРЕЗКИ === */}
+      {/* Модалки обрезки */}
       <ImageCropModal
         isOpen={showAvatarCrop}
         onClose={() => setShowAvatarCrop(false)}
@@ -373,7 +388,7 @@ const ChannelPage: React.FC = () => {
         onClose={() => setShowBannerCrop(false)}
         imageSrc={tempImageSrc}
         aspect={16 / 9}
-        title="Обрежьте шапку канала (рекомендуется 2560×1440)"
+        title="Обрежьте шапку канала"
         onCropComplete={(file) => handleCropComplete(file, 'banner')}
       />
     </div>

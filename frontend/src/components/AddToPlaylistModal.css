@@ -1,122 +1,290 @@
-.modal-overlay {
+/* src/components/AddToPlaylistModal.css */
+
+.playlist-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
 }
 
-.modal {
-  background: #fff;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 420px;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.playlist-modal {
+  background: var(--yt-bg-secondary);
+  border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  width: 440px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  color: var(--yt-text-primary);
+  animation: scaleIn 0.2s ease;
 }
 
-.modal-header {
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.playlist-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
-.modal-header h3 {
+.playlist-modal-header h3 {
   margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--yt-text-primary);
 }
 
-.close-btn {
+.playlist-modal-close {
   background: none;
   border: none;
-  font-size: 24px;
+  color: var(--yt-text-secondary);
+  font-size: 20px;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 8px;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 
-.playlists-list {
+.playlist-modal-close:hover {
+  background: var(--yt-bg-hover);
+  color: var(--yt-text-primary);
+}
+
+/* Сообщение */
+.playlist-message {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.playlist-message.success {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+
+.playlist-message.error {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+}
+
+.playlist-loading {
+  text-align: center;
+  padding: 24px;
+  color: var(--yt-text-secondary);
+}
+
+/* Список плейлистов */
+.playlist-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
   max-height: 300px;
   overflow-y: auto;
-  margin-bottom: 16px;
 }
 
-.playlist-option {
-  width: 100%;
-  text-align: left;
-  padding: 12px 16px;
-  margin-bottom: 8px;
-  background: #f8f9fa;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 15px;
-}
-
-.playlist-option:hover {
-  background: #e9f0ff;
-  border-color: #065fd4;
-}
-
-.video-count {
-  float: right;
-  color: #666;
-  font-size: 13px;
-}
-
-.create-playlist-btn {
+.playlist-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   width: 100%;
   padding: 12px;
-  background: #065fd4;
-  color: white;
+  background: none;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
+  color: var(--yt-text-primary);
   cursor: pointer;
-  margin-bottom: 12px;
+  transition: background 0.2s ease;
+  text-align: left;
 }
 
-.create-playlist-form input {
+.playlist-option-btn:hover {
+  background: var(--yt-bg-hover);
+}
+
+.playlist-option-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.playlist-option-btn svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.playlist-option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.playlist-option-title {
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-option-meta {
+  font-size: 12px;
+  color: var(--yt-text-secondary);
+}
+
+.playlist-empty {
+  text-align: center;
+  color: var(--yt-text-secondary);
+  padding: 16px;
+  font-size: 14px;
+}
+
+/* Кнопка создания */
+.playlist-create-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  padding: 12px;
+  background: none;
+  border: 2px dashed var(--yt-border);
+  border-radius: 10px;
+  color: var(--yt-accent);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.form-buttons {
+.playlist-create-toggle:hover {
+  border-color: var(--yt-accent);
+  background: rgba(62, 166, 255, 0.05);
+}
+
+/* Форма создания */
+.playlist-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.playlist-form-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--yt-bg-input);
+  border: 1px solid var(--yt-border);
+  border-radius: 8px;
+  color: var(--yt-text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.playlist-form-input:focus {
+  border-color: var(--yt-accent);
+}
+
+.playlist-form-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 14px;
+  background: var(--yt-bg-input);
+  border: 1px solid var(--yt-border);
+  border-radius: 8px;
+  color: var(--yt-text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+
+.playlist-form-textarea:focus {
+  border-color: var(--yt-accent);
+}
+
+.playlist-form-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--yt-text-secondary);
+  cursor: pointer;
+}
+
+.playlist-form-checkbox input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--yt-accent);
+}
+
+.playlist-form-actions {
   display: flex;
   gap: 8px;
 }
 
-.form-buttons button {
+.playlist-form-submit {
   flex: 1;
-  padding: 10px;
-}
-
-.cancel-btn {
-  width: 100%;
-  margin-top: 12px;
-  padding: 10px;
-  background: #f1f1f1;
+  padding: 10px 20px;
+  background: var(--yt-accent);
+  color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.modal-message {
-  padding: 10px;
-  margin: 10px 0;
-  border-radius: 6px;
-  text-align: center;
+.playlist-form-submit:hover {
+  background: var(--yt-accent-hover);
+}
+
+.playlist-form-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.playlist-form-cancel {
+  padding: 10px 20px;
+  background: var(--yt-bg-tertiary);
+  color: var(--yt-text-primary);
+  border: none;
+  border-radius: 24px;
+  font-size: 14px;
   font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-.no-playlists {
-  text-align: center;
-  color: #666;
-  padding: 20px 0;
+.playlist-form-cancel:hover {
+  background: var(--yt-bg-hover);
+}
+
+.playlist-form-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

@@ -73,6 +73,14 @@ const LogoutIcon = () => (
   </svg>
 );
 
+// Иконка Vidic (Shorts)
+const VidicIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 4v1H6V4H4v16h2v-1h12v1h2V4h-2zM6 8h12v8H6V8zm2 2v4h8v-4H8z"/>
+    <rect x="10" y="10" width="4" height="4" rx="1" fill="#ff0000"/>
+  </svg>
+);
+
 const Navbar: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -80,7 +88,6 @@ const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
-  // Загружаем аватарку пользователя
   useEffect(() => {
     const fetchAvatar = async () => {
       if (user?.id) {
@@ -155,24 +162,23 @@ const Navbar: React.FC = () => {
                 <UploadIcon />
                 <span>Загрузить</span>
               </Link>
-              
             )}
+
             {isAuthenticated && (
-              <Link to="/vidic" className="vidic-btn">
-                📱 Vidic
+              <Link to="/vidic" className="vidic-btn" title="Vidic (Shorts)">
+                <VidicIcon />
+                <span>Vidic</span>
               </Link>
             )}
 
             {isAuthenticated && user ? (
               <div className="user-section" onClick={goToMyChannel}>
-                {/* Показываем реальную аватарку, если есть */}
                 {avatarUrl ? (
                   <img 
                     src={avatarUrl} 
                     alt={user.username}
                     className="user-avatar"
                     onError={(e) => {
-                      // Если не загрузилась - прячем и показываем инициалы
                       e.currentTarget.style.display = 'none';
                       const parent = e.currentTarget.parentElement;
                       if (parent && !parent.querySelector('.user-avatar-placeholder')) {
@@ -200,7 +206,7 @@ const Navbar: React.FC = () => {
         </div>
       </nav>
 
-      {/* Боковое меню - без изменений */}
+      {/* Боковое меню */}
       {menuOpen && (
         <div className="sidebar-overlay" onClick={() => setMenuOpen(false)}>
           <div className="sidebar" onClick={e => e.stopPropagation()}>
@@ -220,29 +226,34 @@ const Navbar: React.FC = () => {
                   Главная
                 </Link>
 
-                <Link to={`/channel/${user?.id}`} className="sidebar-item" onClick={() => setMenuOpen(false)}>
-                  <VideoIcon />
-                  Мои видео
-                </Link>
+                {isAuthenticated && (
+                  <Link to={`/channel/${user?.id}`} className="sidebar-item" onClick={() => setMenuOpen(false)}>
+                    <VideoIcon />
+                    Мои видео
+                  </Link>
+                )}
               </div>
 
-              <div className="sidebar-section">
-                <div className="sidebar-section-title">Библиотека</div>
-                
-                <Link to="/history" className="sidebar-item" onClick={() => setMenuOpen(false)}>
-                  <HistoryIcon />
-                  История просмотров
-                </Link>
+              {isAuthenticated && (
+                <div className="sidebar-section">
+                  <div className="sidebar-section-title">Библиотека</div>
+                  
+                  <Link to="/history" className="sidebar-item" onClick={() => setMenuOpen(false)}>
+                    <HistoryIcon />
+                    История просмотров
+                  </Link>
 
-                <Link to="/subscriptions" className="sidebar-item" onClick={() => setMenuOpen(false)}>
-                  <SubscriptionsIcon />
-                  Подписки
-                </Link>
+                  <Link to="/subscriptions" className="sidebar-item" onClick={() => setMenuOpen(false)}>
+                    <SubscriptionsIcon />
+                    Подписки
+                  </Link>
 
-                <Link to="/vidic" className="sidebar-item" onClick={() => setMenuOpen(false)}>
-                  📱 Vidic (Shorts)
-                </Link>
-              </div>
+                  <Link to="/vidic" className="sidebar-item" onClick={() => setMenuOpen(false)}>
+                    <VidicIcon />
+                    Vidic
+                  </Link>
+                </div>
+              )}
 
               {isAuthenticated && (
                 <>

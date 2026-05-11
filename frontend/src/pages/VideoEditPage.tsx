@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import styles from './VideoEditPage.module.css';
+import './VideoEditPage.css';
 
 interface Video {
   id: number;
@@ -12,6 +12,31 @@ interface Video {
   custom_thumbnail_path?: string;
   is_private?: boolean;
 }
+
+// SVG иконки
+const LockIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
+  </svg>
+);
+
+const DeleteIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+  </svg>
+);
+
+const SaveIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+  </svg>
+);
 
 const VideoEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +52,7 @@ const VideoEditPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -34,33 +60,23 @@ const VideoEditPage: React.FC = () => {
         const response = await axios.get(`http://localhost:8000/api/video/${id}`);
         const data = response.data;
 
-        console.log('Полученные данные видео:', data); // Отладка
-        console.log('Теги из БД:', data.tags); // Отладка
-
         setVideo(data);
         setTitle(data.title || '');
         setDescription(data.description || '');
         setIsPrivate(data.is_private || false);
 
-        // Улучшенный парсинг тегов
         let parsedTags: string[] = [];
-        
         if (data.tags) {
           if (typeof data.tags === 'string') {
-            // Если строка с запятыми
             parsedTags = data.tags
               .split(',')
               .map((tag: string) => tag.trim())
               .filter((tag: string) => tag.length > 0);
           } else if (Array.isArray(data.tags)) {
-            // Если вдруг приходит массивом
             parsedTags = data.tags;
           }
         }
-        
-        console.log('Распарсенные теги:', parsedTags); // Отладка
         setTags(parsedTags);
-        
         setLoading(false);
       } catch (error) {
         console.error('Error fetching video:', error);
@@ -90,13 +106,15 @@ const VideoEditPage: React.FC = () => {
     }
   };
 
+  const showMessage = (msg: string, type: 'success' | 'error') => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => setMessage(''), 3000);
+  };
+
   const handleSave = async () => {
     setSaving(true);
-    setMessage('');
-
-    // Преобразуем теги в строку для сохранения
     const tagsString = tags.join(', ');
-    console.log('Сохраняем теги:', tagsString); // Отладка
 
     try {
       await axios.put(`http://localhost:8000/api/video/${id}/metadata`, {
@@ -106,26 +124,25 @@ const VideoEditPage: React.FC = () => {
         is_private: isPrivate
       });
 
-      setMessage('✅ Изменения сохранены');
-      setTimeout(() => setMessage(''), 3000);
+      showMessage('Изменения сохранены', 'success');
     } catch (error) {
       console.error(error);
-      setMessage('❌ Ошибка при сохранении');
+      showMessage('Ошибка при сохранении', 'error');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('❗ ВНИМАНИЕ! Видео и все файлы будут удалены НАВСЕГДА. Продолжить?')) return;
+    if (!window.confirm('Видео и все файлы будут удалены навсегда. Продолжить?')) return;
     
     setSaving(true);
     try {
       await axios.delete(`http://localhost:8000/api/video/${id}`);
-      setMessage('✅ Видео удалено');
+      showMessage('Видео удалено', 'success');
       setTimeout(() => navigate('/'), 1500);
     } catch (error) {
-      setMessage('❌ Ошибка удаления');
+      showMessage('Ошибка удаления', 'error');
     } finally {
       setSaving(false);
     }
@@ -135,8 +152,6 @@ const VideoEditPage: React.FC = () => {
     if (!thumbnailFile) return;
 
     setSaving(true);
-    setMessage('');
-    
     const formData = new FormData();
     formData.append('thumbnail', thumbnailFile);
 
@@ -152,132 +167,182 @@ const VideoEditPage: React.FC = () => {
         thumbnail: `http://localhost:8000/media/${thumbnailPath}`
       } : null);
       
-      setMessage('✅ Обложка обновлена');
+      showMessage('Обложка обновлена', 'success');
       setThumbnailFile(null);
       
       const fileInput = document.getElementById('thumbnail-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
     } catch (error) {
       console.error(error);
-      setMessage('❌ Ошибка при загрузке обложки');
+      showMessage('Ошибка при загрузке обложки', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) return <div className={styles['loading-container']}>⏳ Загрузка...</div>;
-  if (!video) return <div className={styles['error-container']}>❌ Видео не найдено</div>;
+  if (loading) return (
+    <div className="edit-loading">
+      <div className="edit-spinner"></div>
+      <p>Загрузка...</p>
+    </div>
+  );
+
+  if (!video) return (
+    <div className="edit-error">
+      <p>Видео не найдено</p>
+    </div>
+  );
 
   return (
-    <div className={styles['video-edit-page']}>
-      <h1>✏️ Редактировать видео</h1>
-      
-      {message && (
-        <div className={`${styles.message} ${message.includes('✅') ? styles.success : styles.error}`}>
-          {message}
+    <div className="video-edit-page">
+      <div className="edit-container">
+        <div className="edit-header">
+          <h1>Редактирование видео</h1>
         </div>
-      )}
-
-      <div className={styles['edit-form']}>
-        <div className={styles['form-group']}>
-          <label>Название видео</label>
-          <input
-            type="text"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Введите название видео"
-            disabled={saving}
-          />
-        </div>
-
-        <div className={styles['form-group']}>
-          <label>Описание</label>
-          <textarea
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            placeholder="Описание видео..."
-            rows={6}
-            disabled={saving}
-          />
-        </div>
-
-        <div className={styles['form-group']}>
-          <label>Теги</label>
-          <div className={styles['tags-input-container']}>
-            {tags.map((tag, index) => (
-              <div key={index} className={styles['tag-chip']}>
-                {tag}
-                <span 
-                  className={styles['tag-remove']}
-                  onClick={() => removeTag(tag)}
-                >
-                  ✕
-                </span>
-              </div>
-            ))}
-            <input
-              type="text"
-              className={styles['tag-input']}
-              placeholder="Новый тег + Enter"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={saving}
-            />
+        
+        {message && (
+          <div className={`edit-message ${messageType}`}>
+            {message}
           </div>
-          <small className={styles['tag-hint']}>Нажмите Enter для добавления тега</small>
-        </div>
+        )}
 
-        <div className={styles['form-group']}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={isPrivate}
-              onChange={e => setIsPrivate(e.target.checked)}
-              disabled={saving}
-            />
-            <span>🔒 Приватное видео</span>
-          </label>
-        </div>
-
-        <button onClick={handleSave} disabled={saving} className={styles['save-button']}>
-          {saving ? 'Сохранение...' : 'Сохранить изменения'}
-        </button>
-
-        <h3>Изменить обложку</h3>
-        <div className={styles['thumbnail-section']}>
-          {video.thumbnail && (
-            <div className={styles['current-thumbnail']}>
-              <img 
-                src={video.custom_thumbnail_path 
-                  ? `http://localhost:8000/media/${video.custom_thumbnail_path}`
-                  : `http://localhost:8000/media/thumbnails/${video.id}.jpg`
-                } 
-                alt="Current thumbnail" 
+        <div className="edit-content">
+          {/* Левая колонка - форма */}
+          <div className="edit-form">
+            <div className="form-group">
+              <label>Название</label>
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="Введите название видео"
+                disabled={saving}
+                className="form-input"
               />
             </div>
-          )}
-          
-          <input
-            id="thumbnail-input"
-            type="file"
-            accept="image/*"
-            onChange={e => setThumbnailFile(e.target.files?.[0] || null)}
-            disabled={saving}
-          />
-          
-          <button 
-            onClick={handleThumbnailUpload} 
-            disabled={!thumbnailFile || saving}
-            className={styles['upload-button']}
-          >
-            📸 Загрузить новую обложку
-          </button>
-        </div>
 
-        <button onClick={handleDelete} disabled={saving} className={styles['delete-button']}>
-          🗑️ Удалить видео навсегда
-        </button>
+            <div className="form-group">
+              <label>Описание</label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Расскажите о вашем видео..."
+                rows={6}
+                disabled={saving}
+                className="form-textarea"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Теги</label>
+              <div className="tags-container">
+                {tags.map((tag, index) => (
+                  <span key={index} className="tag-chip">
+                    {tag}
+                    <button 
+                      className="tag-remove"
+                      onClick={() => removeTag(tag)}
+                      disabled={saving}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  className="tag-input"
+                  placeholder="Добавить тег..."
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={saving}
+                />
+              </div>
+              <span className="tag-hint">Enter для добавления</span>
+            </div>
+
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isPrivate}
+                  onChange={e => setIsPrivate(e.target.checked)}
+                  disabled={saving}
+                  className="form-checkbox"
+                />
+                <LockIcon />
+                Приватное видео
+              </label>
+            </div>
+
+            <button 
+              onClick={handleSave} 
+              disabled={saving} 
+              className="save-btn"
+            >
+              <SaveIcon />
+              {saving ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          </div>
+
+          {/* Правая колонка - обложка */}
+          <div className="edit-sidebar">
+            <div className="thumbnail-section">
+              <h3>Обложка видео</h3>
+              
+              <div className="thumbnail-preview">
+                <img 
+                  src={video.custom_thumbnail_path 
+                    ? `http://localhost:8000/media/${video.custom_thumbnail_path}`
+                    : `http://localhost:8000/media/thumbnails/${video.id}.jpg`
+                  } 
+                  alt="Обложка" 
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://via.placeholder.com/320x180/272727/f1f1f1?text=Нет+превью';
+                  }}
+                />
+              </div>
+              
+              <label htmlFor="thumbnail-input" className="upload-thumb-btn">
+                <UploadIcon />
+                Выбрать изображение
+              </label>
+              <input
+                id="thumbnail-input"
+                type="file"
+                accept="image/*"
+                onChange={e => setThumbnailFile(e.target.files?.[0] || null)}
+                disabled={saving}
+                style={{ display: 'none' }}
+              />
+              
+              {thumbnailFile && (
+                <div className="thumbnail-file-name">{thumbnailFile.name}</div>
+              )}
+              
+              <button 
+                onClick={handleThumbnailUpload} 
+                disabled={!thumbnailFile || saving}
+                className="upload-thumb-submit"
+              >
+                Загрузить обложку
+              </button>
+            </div>
+
+            <div className="danger-section">
+              <h3>Опасная зона</h3>
+              <p>После удаления видео нельзя восстановить</p>
+              <button 
+                onClick={handleDelete} 
+                disabled={saving} 
+                className="delete-btn"
+              >
+                <DeleteIcon />
+                Удалить видео
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

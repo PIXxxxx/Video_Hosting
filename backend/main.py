@@ -22,7 +22,7 @@ import mimetypes
 from file_validator import validate_video_file
 from sqlalchemy import func
 from celery_app_vidic import process_vidic_task
-from models import VidicVideo, VidicLike    
+from models import VidicVideo, VidicLike, VidicComment
 
 init_db()
 
@@ -573,21 +573,56 @@ def toggle_like(
 
 
 @app.get("/api/video/{video_id}/likes")
-def get_likes(video_id: int, db: Session = Depends(get_db)):
-
+def get_likes(
+    video_id: int, 
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Получить количество лайков/дизлайков и статус текущего пользователя"""
     like_count = db.query(func.count(models.Like.id)).filter(
         models.Like.video_id == video_id,
         models.Like.is_like == True
     ).scalar() or 0
     
-    # TODO: optimize via query
-
     dislike_count = db.query(func.count(models.Like.id)).filter(
         models.Like.video_id == video_id,
         models.Like.is_like == False
     ).scalar() or 0
-    return {"likes": like_count, "dislikes": dislike_count}
+    
+    # Проверяем статус текущего пользователя
+    user_like = None
+    if current_user:
+        existing = db.query(models.Like).filter(
+            models.Like.video_id == video_id,
+            models.Like.user_id == current_user.id
+        ).first()
+        if existing:
+            user_like = existing.is_like
+    
+    return {
+        "likes": like_count, 
+        "dislikes": dislike_count,
+        "user_like": user_like
+    }
 
+@app.get("/api/video/{video_id}/user-like")
+def get_user_like(
+    video_id: int,
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Проверяет, поставил ли текущий пользователь лайк/дизлайк на видео"""
+    if not current_user:
+        return {"is_like": None}
+    
+    like = db.query(models.Like).filter(
+        models.Like.video_id == video_id,
+        models.Like.user_id == current_user.id
+    ).first()
+    
+    if like:
+        return {"is_like": like.is_like}
+    return {"is_like": None}
 
 @app.get("/api/video/{video_id}/comments")
 def get_comments(video_id: int, db: Session = Depends(get_db)):
@@ -1377,3 +1412,44 @@ def get_channel_vidic_videos(
         })
     
     return result
+
+@app.get("/api/vidic/{video_id}/comments")
+def get_vidic_comments(
+    video_id: int,
+    db: Session = Depends(get_db)
+):
+    """Получить комментарии Vidic видео"""
+    comments = db.query(VidicComment).filter(
+        VidicComment.video_id == video_id
+    ).order_by(VidicComment.created_at.desc()).limit(50).all()
+    
+    result = []
+    for c in comments:
+        user = c.user
+        result.append({
+            "id": c.id,
+            "text": c.text,
+            "username": user.username,
+            "user_id": user.id,
+            "user_avatar": f"{settings.MEDIA_URL}/{user.avatar_path}" if user.avatar_path else None,
+            "created_at": c.created_at.isoformat()
+        })
+    return result
+
+@app.post("/api/vidic/{video_id}/comments")
+def add_vidic_comment(
+    video_id: int,
+    comment: schemas.CommentBase,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Добавить комментарий к Vidic видео"""
+    new_comment = VidicComment(
+        video_id=video_id,
+        user_id=current_user.id,
+        text=comment.text
+    )
+    db.add(new_comment)
+    db.commit()
+    db.refresh(new_comment)
+    return {"message": "Комментарий добавлен", "id": new_comment.id}

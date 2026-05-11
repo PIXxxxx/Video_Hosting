@@ -1,10 +1,26 @@
+/* src/components/VideoPlayer.css - Улучшенный плеер */
 .custom-player {
   position: relative;
   width: 100%;
   height: 100%;
   background: #000;
-  border-radius: 12px;
   overflow: hidden;
+  font-family: 'Roboto', 'YouTube Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.custom-player.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+}
+
+.custom-player.fullscreen .video-container video {
+  object-fit: contain;
 }
 
 .video-container {
@@ -21,88 +37,409 @@
   background: #000;
 }
 
-.progress-container {
+/* Центральная кнопка Play */
+.center-play-overlay {
   position: absolute;
-  bottom: 60px;
+  top: 0;
   left: 0;
   right: 0;
-  padding: 0 16px;
-  z-index: 10;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 5;
+}
+
+.center-play-btn {
+  width: 68px;
+  height: 68px;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: white;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.center-play-btn:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.center-play-btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Прогресс-бар */
+.progress-container {
+  position: absolute;
+  bottom: 50px;
+  left: 0;
+  right: 0;
+  padding: 0 12px;
+  z-index: 30;
 }
 
 .progress-bar {
   width: 100%;
-  accent-color: #3ea6ff;
+  height: 5px;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+  transition: height 0.1s ease;
 }
 
+.progress-bar:hover {
+  height: 8px;
+}
+
+.progress-bar::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ff0000;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease;
+}
+
+.progress-bar::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.progress-bar::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ff0000;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Контролы */
 .controls-bar {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
-  padding: 12px 16px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.6) 60%, transparent 100%);
+  padding: 40px 12px 8px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
   z-index: 20;
-  opacity: 1;
-  transition: opacity 0.2s;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
-.custom-player:hover .controls-bar {
+.controls-bar.visible {
   opacity: 1;
+  pointer-events: all;
 }
 
-/* Остальные стили (btn, quality-menu и т.д.) оставь как были, или улучши по вкусу */
-.btn {
+/* Кнопки управления */
+.control-btn {
   background: none;
   border: none;
   color: white;
-  font-size: 1.4rem;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.control-btn:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .play-btn {
-  font-size: 1.8rem;
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
 }
 
+/* Время */
+.time-display {
+  color: white;
+  font-size: 13px;
+  font-family: 'Roboto Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  padding: 0 8px;
+  opacity: 0.9;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+/* Громкость */
+.volume-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.volume-btn {
+  font-size: 16px;
+}
+
+.volume-slider-wrapper {
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: width 0.2s ease, opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.volume-slider-wrapper.visible {
+  width: 70px;
+  opacity: 1;
+  margin-left: 4px;
+}
+
+.volume-slider {
+  width: 70px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  cursor: pointer;
+  outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
+}
+
+/* Правые контролы (качество + фуллскрин) */
+.right-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* Качество */
 .quality-wrapper {
   position: relative;
-  margin-left: auto;
+}
+
+.settings-btn {
+  font-size: 18px;
 }
 
 .quality-menu {
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 8px);
   right: 0;
-  background: #272727;
-  border-radius: 8px;
+  background: rgba(40, 40, 40, 0.98);
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
   padding: 8px 0;
-  min-width: 120px;
-  z-index: 30;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  min-width: 140px;
+  z-index: 40;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+  animation: menuFadeIn 0.2s ease;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.quality-menu-header {
+  padding: 8px 16px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .quality-option {
   padding: 8px 16px;
   color: white;
   cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
 }
 
 .quality-option:hover {
-  background: #3ea6ff;
-  color: black;
+  background: rgba(255, 255, 255, 0.1);
 }
 
+.quality-option.active {
+  color: #3ea6ff;
+}
+
+/* Полный экран */
+.fullscreen-btn {
+  font-size: 20px;
+}
+
+/* Ошибка */
 .player-error {
   position: absolute;
   top: 12px;
-  left: 12px;
-  background: rgba(0,0,0,0.8);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
   color: #ff9800;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 10px 20px;
+  border-radius: 8px;
   z-index: 25;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Полноэкранный режим */
+.custom-player.fullscreen .controls-bar {
+  padding: 60px 20px 12px;
+}
+
+.custom-player.fullscreen .progress-container {
+  bottom: 55px;
+  padding: 0 20px;
+}
+
+.custom-player.fullscreen .time-display {
+  font-size: 14px;
+}
+
+.custom-player.fullscreen .control-btn {
+  width: 42px;
+  height: 42px;
+  font-size: 20px;
+}
+
+.custom-player.fullscreen .play-btn {
+  width: 48px;
+  height: 48px;
+  font-size: 24px;
+}
+
+.custom-player.fullscreen .center-play-btn {
+  width: 80px;
+  height: 80px;
+  font-size: 32px;
+}
+
+/* Убираем голубую обводку у всех кнопок плеера */
+.control-btn,
+.play-btn,
+.volume-btn,
+.settings-btn,
+.fullscreen-btn {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.control-btn:focus,
+.play-btn:focus,
+.volume-btn:focus,
+.settings-btn:focus,
+.fullscreen-btn:focus,
+.control-btn:focus-visible,
+.play-btn:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Кнопки управления */
+.control-btn {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 18px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.control-btn:focus,
+.control-btn:focus-visible,
+.control-btn:active {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* Кнопка Play */
+.play-btn {
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.play-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
 }

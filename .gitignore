@@ -37,6 +37,13 @@ media/
 docker-compose*.yml
 Dockerfile
 
+backend/vidic_uploads/
+backend/uploads/
+backend/media/vidic_videos/
+backend/media/vidic_thumbnails/
+backend/media/videos/
+backend/media/thumbnails/
+
 # Node modules
 frontend/node_modules/
 frontend/build/

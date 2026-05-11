@@ -6,147 +6,255 @@
   width: 100%;
   height: 100%;
   z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
 }
 
 .vidic-player-container {
   position: relative;
-  width: 100%;
+  width: auto;
   height: 100%;
+  aspect-ratio: 9 / 16;
+  max-width: 100%;
   background: #000;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-/* Видео */
+@media (max-width: 768px) {
+  .vidic-player-container {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
 .vidic-video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
+  cursor: pointer;
 }
 
-/* ====================== КОНТРОЛЫ ====================== */
-
-.vidic-controls {
+/* Центральная кнопка */
+.vidic-center-play {
   position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);           /* ← Вот ключевой момент */
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 20px 16px 16px;
-  background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.4) 60%, transparent);
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
   opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 30;
+  transition: opacity 0.2s ease;
+  z-index: 25;
+  pointer-events: none;
+}
+
+.vidic-center-play.visible {
+  opacity: 1;
   pointer-events: auto;
 }
 
-.vidic-controls.visible {
-  opacity: 1;
-}
-
-/* Прогресс */
-.vidic-progress-container {
-  width: 100%;
-  margin-bottom: 12px;
-  padding: 0 4px;
-  box-sizing: border-box;
-}
-
-.vidic-progress-bar {
-  width: 100% !important;
-  height: 4px;
-  appearance: none;
-  background: rgba(255,255,255,0.35);
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.vidic-progress-bar::-webkit-slider-thumb {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  background: #ff3b30;
-  border: 2px solid white;
+.vidic-center-play-btn {
+  width: 64px; height: 64px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
   border-radius: 50%;
-  cursor: pointer;
-}
-
-/* Панель кнопок */
-.vidic-button-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
+  justify-content: center;
+  transition: transform 0.2s ease;
 }
 
-.vidic-control-btn {
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
+.vidic-center-play-btn:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.85);
+}
+
+/* Прогресс-бар */
+.vidic-progress-top {
+  position: absolute;
+  bottom: 0px;
+  left: 0; right: 0;
+  padding: 0 12px;
+  z-index: 35;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.vidic-progress-top.visible { opacity: 1; }
+
+.vidic-progress-bar-top {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  outline: none;
+}
+
+.vidic-progress-bar-top::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  border: none;
+}
+
+/* Нижняя панель */
+.vidic-bottom-bar {
+  position: absolute;
+  bottom: 0px;
+  left: 0; right: 0;
+  padding: 20px 12px 8px;
+  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.2) 60%, transparent 100%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 30;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.vidic-bottom-bar.visible { opacity: 1; }
+
+.vidic-bottom-btn {
+  background: none;
   border: none;
   color: white;
-  font-size: 20px;
-  width: 40px;
-  height: 40px;
+  width: 36px; height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  flex-shrink: 0;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.vidic-control-btn:hover {
-  background: rgba(0, 0, 0, 0.9);
-  transform: scale(1.1);
-}
+.vidic-bottom-btn:hover { background: rgba(255, 255, 255, 0.15); }
 
-.vidic-time {
+.vidic-time-bottom {
   color: white;
-  font-size: 13.5px;
-  font-family: monospace;
-  background: rgba(0,0,0,0.6);
-  padding: 4px 10px;
-  border-radius: 10px;
+  font-size: 13px;
+  font-family: 'Roboto Mono', monospace;
+  opacity: 0.9;
+  white-space: nowrap;
 }
 
-/* Громкость */
-.vidic-volume-container {
+.vidic-bottom-right {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.vidic-volume-slider {
-  width: 0;
-  opacity: 0;
-  transition: all 0.25s;
-  height: 4px;
-  background: rgba(255,255,255,0.4);
+/* Громкость - всегда видна */
+.vidic-volume-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.vidic-volume-container:hover .vidic-volume-slider {
-  width: 95px;
-  opacity: 1;
+.vidic-volume-slider-always {
+  width: 60px;
+  height: 3px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  outline: none;
+}
+
+.vidic-volume-slider-always::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  border: none;
+}
+
+/* Кнопки действий */
+.vidic-actions-right {
+  position: absolute;
+  right: 12px;
+  bottom: 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  z-index: 30;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.vidic-actions-right.visible { opacity: 1; }
+
+.vidic-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: white;
+  transition: transform 0.2s ease;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.vidic-action-btn:hover { transform: scale(1.1); }
+.vidic-action-btn:active { transform: scale(0.95); }
+
+.vidic-action-icon {
+  width: 48px; height: 48px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.vidic-action-btn:hover .vidic-action-icon { background: rgba(255, 255, 255, 0.2); }
+
+.vidic-action-text {
+  font-size: 12px;
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }
 
 /* Буферизация */
 .vidic-buffering {
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 35;
+  z-index: 40;
 }
 
 .vidic-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(255,255,255,0.25);
-  border-top-color: #ff3b30;
+  width: 40px; height: 40px;
+  border: 3px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }

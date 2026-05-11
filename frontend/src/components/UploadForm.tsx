@@ -1,8 +1,28 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import styles from './UploadForm.module.css'; // Импорт как модуль
+import styles from './UploadForm.module.css';
 import { Link } from 'react-router-dom';
+
+// SVG иконки
+const VideoIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+  </svg>
+);
+
+const VidicIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor">
+    <rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <circle cx="12" cy="12" r="3" fill="#ff0000"/>
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor">
+    <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
+  </svg>
+);
 
 const UploadForm = () => {
     const [file, setFile] = useState<File | null>(null);
@@ -12,12 +32,10 @@ const UploadForm = () => {
     const [error, setError] = useState('');
     const [uploadedVideo, setUploadedVideo] = useState<{ id: number; title: string } | null>(null);
     const [description, setDescription] = useState('');
-    const [tags, setTags] = useState<string[]>([]); // Изменено на массив
-    const [tagInput, setTagInput] = useState(''); // Для ввода нового тега
-    const [isVertical, setIsVertical] = useState(false);
+    const [tags, setTags] = useState<string[]>([]);
+    const [tagInput, setTagInput] = useState('');
     const { user } = useAuth();
 
-    // Добавление тега
     const addTag = () => {
         const trimmed = tagInput.trim();
         if (trimmed && !tags.includes(trimmed)) {
@@ -26,12 +44,10 @@ const UploadForm = () => {
         setTagInput('');
     };
 
-    // Удаление тега
     const removeTag = (tagToRemove: string) => {
         setTags(tags.filter((tag: string) => tag !== tagToRemove));
     };
 
-    // Обработка нажатия клавиш
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' || e.key === ',') {
             e.preventDefault();
@@ -55,9 +71,7 @@ const UploadForm = () => {
         formData.append('file', file);
         formData.append('title', title);
         formData.append('description', description);
-        // Преобразуем массив тегов в строку через запятую
         formData.append('tags', tags.join(', '));
-        formData.append('is_vertical', isVertical.toString());
 
         try {
             const response = await axios.post('http://localhost:8000/api/upload/', formData, {
@@ -73,11 +87,10 @@ const UploadForm = () => {
                 title: response.data.title
             });
             
-            // Очищаем форму
             setTitle('');
             setDescription('');
-            setTags([]); // Очищаем массив тегов
-            setTagInput(''); // Очищаем поле ввода тегов
+            setTags([]);
+            setTagInput('');
             setFile(null);
             
             const fileInput = document.getElementById('file-upload') as HTMLInputElement;
@@ -104,16 +117,16 @@ const UploadForm = () => {
     }
 
     return (
-        
-
         <div className={styles['upload-container']}>
             <div className={styles['upload-type-selector']}>
-            <Link to="/upload" className={styles['upload-link']}>
-                📹 Обычное видео
-            </Link>
-            <Link to="/upload/vidic" className={styles['upload-link-active']}>
-                📱 Вертикальное видео (Vidic)
-            </Link>
+                <Link to="/upload" className={styles['upload-link-active']}>
+                    <VideoIcon />
+                    Обычное видео
+                </Link>
+                <Link to="/upload/vidic" className={styles['upload-link']}>
+                    <VidicIcon />
+                    Vidic
+                </Link>
             </div>
             
             <div className={styles['upload-form']}>
@@ -127,14 +140,15 @@ const UploadForm = () => {
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             disabled={uploading}
+                            required
                         />
                     </div>
                     
                     <div className={styles['form-group']}>
-                        <label>Описание видео</label>
+                        <label>Описание</label>
                         <textarea
                             className={styles['form-textarea']}
-                            placeholder="Описание видео (можно использовать ссылки, тайм-коды и т.д.)"
+                            placeholder="Расскажите о вашем видео..."
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                             rows={6}
@@ -152,21 +166,21 @@ const UploadForm = () => {
                                         className={styles['tag-remove']}
                                         onClick={() => removeTag(tag)}
                                     >
-                                        ✕
+                                        ×
                                     </span>
                                 </div>
                             ))}
                             <input
                                 type="text"
                                 className={styles['tag-input']}
-                                placeholder="Новый тег + Enter"
+                                placeholder="Добавить тег..."
                                 value={tagInput}
                                 onChange={(e) => setTagInput(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 disabled={uploading}
                             />
                         </div>
-                        <small className={styles['tag-hint']}>Нажмите Enter для добавления тега</small>
+                        <span className={styles['tag-hint']}>Нажмите Enter для добавления</span>
                     </div>
                     
                     <div className={styles['form-group']}>
@@ -181,27 +195,26 @@ const UploadForm = () => {
                                 id="file-upload"
                             />
                             <label htmlFor="file-upload" className={styles['file-input-label']}>
-                                📹 {file ? 'Файл выбран' : 'Выберите видео'}
+                                <UploadIcon />
+                                {file ? 'Файл выбран' : 'Выберите видео для загрузки'}
                             </label>
                         </div>
                         {file && <div className={styles['file-name']}>{file.name}</div>}
                     </div>
                     
                     <button type="submit" disabled={uploading} className={styles['submit-button']}>
-                        {uploading ? '⏳ Загрузка...' : '🚀 Загрузить видео'}
+                        {uploading ? 'Загрузка...' : 'Загрузить видео'}
                     </button>
                 </form>
 
                 {message && (
                     <div className={`${styles.message} ${styles.success}`}>
-                        <p>✅ {message}</p>
+                        <p>{message}</p>
                         {uploadedVideo && (
                             <div className={styles['video-info']}>
                                 <p>Видео "{uploadedVideo.title}" загружено!</p>
                                 <p>Оно будет доступно после обработки</p>
-                                <a href={`/video/${uploadedVideo.id}`}>
-                                    Перейти к видео →
-                                </a>
+                                <a href={`/video/${uploadedVideo.id}`}>Перейти к видео</a>
                             </div>
                         )}
                     </div>
@@ -209,7 +222,7 @@ const UploadForm = () => {
 
                 {error && (
                     <div className={`${styles.message} ${styles.error}`}>
-                        <p>❌ {error}</p>
+                        <p>{error}</p>
                     </div>
                 )}
             </div>

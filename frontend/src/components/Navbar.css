@@ -158,6 +158,32 @@
   fill: currentColor;
 }
 
+/* Кнопка Vidic */
+.vidic-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 24px;
+  background: var(--yt-bg-tertiary);
+  color: var(--yt-text-primary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.vidic-btn:hover {
+  background: var(--yt-bg-hover);
+}
+
+.vidic-btn svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
 /* Секция пользователя */
 .user-section {
   display: flex;
@@ -407,6 +433,17 @@ body.menu-open {
     justify-content: center;
   }
   
+  .vidic-btn span {
+    display: none;
+  }
+  
+  .vidic-btn {
+    padding: 8px;
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+  }
+  
   .nav-center {
     flex: 1;
     max-width: none;
@@ -462,6 +499,13 @@ body.menu-open {
     padding: 6px;
   }
   
+  .upload-btn,
+  .vidic-btn {
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+  }
+  
   .sidebar {
     width: 260px;
   }
@@ -488,9 +532,10 @@ body.menu-open {
     font-size: 15px;
   }
   
-  .upload-btn {
-    width: 36px;
-    height: 36px;
+  .upload-btn,
+  .vidic-btn {
+    width: 32px;
+    height: 32px;
   }
   
   .register-btn {
@@ -502,24 +547,4 @@ body.menu-open {
     padding: 6px 12px;
     font-size: 13px;
   }
-}
-
-.vidic-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: 24px;
-  background: var(--yt-bg-tertiary);
-  color: var(--yt-text-primary);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.vidic-btn:hover {
-  background: var(--yt-bg-hover);
-  transform: translateY(-1px);
 }
