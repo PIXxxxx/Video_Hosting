@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import VideoCard from '../components/VideoCard';
+import { useAuth } from '../context/AuthContext';
 import './VideoListPage.css';
 
 // SVG иконки
@@ -32,45 +33,100 @@ const UploadIcon = () => (
 interface Video {
   id: number;
   title: string;
-  description?: string;
   views: number;
   upload_date: string;
   author_id: number;
   author?: string;
   is_processed: boolean;
   file_path?: string;
-  hls_playlist_path?: string | null;
+  thumbnail?: string;
+}
+
+const PAGE_SIZE = 15;
+
+interface Video {
+  id: number;
+  title: string;
+  views: number;
+  upload_date: string;
+  author_id: number;
+  author?: string;
+  is_processed: boolean;
+  file_path?: string;
   thumbnail?: string;
 }
 
 const VideoListPage: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
+  const [hasMore, setHasMore] = useState(true);
+  const { isAuthenticated } = useAuth();
+  const pageRef = useRef(0);
+  const loadingRef = useRef(false);
 
-  const fetchVideos = async () => {
-    setLoading(true);
+  const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token');
+
+  const fetchVideos = useCallback(async (pageNum: number, append: boolean) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    
+    if (pageNum === 0) setLoading(true);
+    else setLoadingMore(true);
     setError('');
     
     try {
-      const response = await axios.get('http://localhost:8000/api/videos', {
-        params: {
-          skip: 0,
-          limit: 50
-        }
-      });
-      setVideos(response.data);
+      const currentToken = getToken();
+      const headers: Record<string, string> = {};
+      if (currentToken) headers.Authorization = `Bearer ${currentToken}`;
+      
+      let response;
+      
+      if (currentToken) {
+        response = await axios.get('http://localhost:8000/api/recommendations/personal', {
+          params: { limit: PAGE_SIZE, skip: pageNum * PAGE_SIZE },
+          headers
+        });
+      } else {
+        response = await axios.get('http://localhost:8000/api/videos', {
+          params: { skip: pageNum * PAGE_SIZE, limit: PAGE_SIZE }
+        });
+      }
+      
+      const newVideos = response.data;
+      console.log(`📥 Страница ${pageNum}: ${newVideos.length} видео (всего: ${append ? videos.length + newVideos.length : newVideos.length})`);
+      
+      if (append) {
+        setVideos(prev => [...prev, ...newVideos]);
+      } else {
+        setVideos(newVideos);
+      }
+      
+      setHasMore(newVideos.length >= PAGE_SIZE);
     } catch (err) {
-      setError('Не удалось загрузить видео');
       console.error('Ошибка загрузки:', err);
+      if (!append) setError('Не удалось загрузить видео');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+      loadingRef.current = false;
     }
-  };
+  }, [videos.length]);
 
+  // Первая загрузка
   useEffect(() => {
-    fetchVideos();
-  }, []);
+    pageRef.current = 0;
+    setVideos([]);
+    setHasMore(true);
+    fetchVideos(0, false);
+  }, [isAuthenticated]);
+
+  // Кнопка "Загрузить ещё"
+  const handleLoadMore = () => {
+    pageRef.current += 1;
+    fetchVideos(pageRef.current, true);
+  };
 
   if (loading) {
     return (
@@ -83,16 +139,14 @@ const VideoListPage: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && videos.length === 0) {
     return (
       <div className="video-list-page">
         <div className="error-container">
           <ErrorIcon />
           <p className="error-message">{error}</p>
-          <p className="error-detail">Проверьте подключение и попробуйте снова</p>
-          <button onClick={fetchVideos}>
-            <RefreshIcon />
-            Обновить
+          <button onClick={() => { pageRef.current = 0; fetchVideos(0, false); }}>
+            <RefreshIcon /> Обновить
           </button>
         </div>
       </div>
@@ -102,20 +156,14 @@ const VideoListPage: React.FC = () => {
   return (
     <div className="video-list-page">
       <div className="video-list-header">
-        <h1>Рекомендации</h1>
+        <h1>{isAuthenticated ? 'Рекомендации' : 'Популярные видео'}</h1>
       </div>
       
       {videos.length === 0 ? (
         <div className="no-videos">
           <NoVideosIcon />
           <h3>Пока нет видео</h3>
-          <p>Загрузите первое видео, чтобы оно появилось здесь</p>
-          <Link to="/upload">
-            <button>
-              <UploadIcon />
-              Загрузить видео
-            </button>
-          </Link>
+          <Link to="/upload"><button><UploadIcon /> Загрузить видео</button></Link>
         </div>
       ) : (
         <>
@@ -134,6 +182,21 @@ const VideoListPage: React.FC = () => {
                 thumbnail={video.thumbnail}
               />
             ))}
+          </div>
+          
+          <div className="load-more-container">
+            {loadingMore ? (
+              <div className="loading-more">
+                <div className="loader"></div>
+                <p>Загрузка...</p>
+              </div>
+            ) : hasMore ? (
+              <button className="load-more-btn" onClick={handleLoadMore}>
+                Загрузить ещё
+              </button>
+            ) : (
+              <p className="no-more">Все видео загружены</p>
+            )}
           </div>
         </>
       )}

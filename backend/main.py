@@ -793,85 +793,127 @@ def get_subscriptions_feed(
 @app.get("/api/recommendations/personal")
 def get_personal_recommendations(
     limit: int = Query(12, ge=1, le=30),
+    skip: int = Query(0, ge=0),  # ← добавляем skip
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Персональные рекомендации на основе истории просмотров пользователя"""
+    """Персональные рекомендации с пагинацией"""
     
-    # 1. Получаем последние 15 просмотренных видео пользователя
+    # 1. История просмотров
     watched = db.query(models.WatchHistory)\
         .options(joinedload(models.WatchHistory.video))\
         .filter(models.WatchHistory.user_id == current_user.id)\
         .order_by(models.WatchHistory.watched_at.desc())\
-        .limit(15)\
+        .limit(20)\
         .all()
 
-    if not watched:
-        # Если истории нет — возвращаем просто популярные видео
-        popular = db.query(models.Video)\
-            .filter(models.Video.is_private == False)\
-            .order_by(models.Video.views.desc())\
-            .limit(limit)\
-            .all()
-        return format_videos(popular)
-
-    # 2. Собираем все теги из просмотренных видео с весом (чем новее — тем важнее)
+    watched_ids = {w.video_id for w in watched}
+    
+    # 2. Теги и авторы
     tag_score = {}
+    author_score = {}
+    
     for i, entry in enumerate(watched):
-        if not entry.video or not entry.video.tags:
+        video = entry.video
+        if not video:
             continue
-            
-        weight = 1.0 / (i + 1)   # более свежие просмотры имеют больший вес
+        weight = 1.0 / (i + 1)
         
-        for tag in [t.strip().lower() for t in entry.video.tags.split(',') if t.strip()]:
-            if tag in tag_score:
-                tag_score[tag] += weight
-            else:
-                tag_score[tag] = weight
+        if video.tags:
+            for tag in [t.strip().lower() for t in video.tags.split(',') if t.strip()]:
+                tag_score[tag] = tag_score.get(tag, 0) + weight
+        
+        if video.author_id:
+            author_score[video.author_id] = author_score.get(video.author_id, 0) + weight * 2
 
-    if not tag_score:
-        # Если тегов нет — популярные видео
-        popular = db.query(models.Video)\
-            .filter(models.Video.is_private == False)\
-            .order_by(models.Video.views.desc())\
-            .limit(limit)\
+    # 3. Загружаем ТОЛЬКО нужное количество + запас
+    # Берём top по тегам, top по авторам, и свежие
+    candidate_ids = set()
+    
+    # По тегам (если есть)
+    if tag_score:
+        top_tags = sorted(tag_score, key=tag_score.get, reverse=True)[:5]
+        for tag in top_tags:
+            tag_videos = db.query(models.Video)\
+                .filter(
+                    models.Video.is_private == False,
+                    models.Video.id.notin_(watched_ids),
+                    models.Video.tags.ilike(f"%{tag}%")
+                )\
+                .order_by(models.Video.views.desc())\
+                .limit(20)\
+                .all()
+            for v in tag_videos:
+                candidate_ids.add(v.id)
+    
+    # По авторам
+    if author_score:
+        top_authors = sorted(author_score, key=author_score.get, reverse=True)[:5]
+        author_videos = db.query(models.Video)\
+            .filter(
+                models.Video.is_private == False,
+                models.Video.id.notin_(watched_ids),
+                models.Video.author_id.in_(top_authors)
+            )\
+            .order_by(models.Video.upload_date.desc())\
+            .limit(20)\
             .all()
-        return format_videos(popular)
-
-    # 3. Ищем видео, которые имеют пересечение тегов
-    recommendations = []
-    seen_ids = {w.video_id for w in watched}
-
-    all_videos = db.query(models.Video)\
+        for v in author_videos:
+            candidate_ids.add(v.id)
+    
+    # Свежие + популярные (для разнообразия)
+    popular = db.query(models.Video)\
         .filter(
             models.Video.is_private == False,
-            models.Video.id.notin_(seen_ids)
+            models.Video.id.notin_(watched_ids)
         )\
+        .order_by(models.Video.views.desc())\
+        .limit(30)\
         .all()
-
-    for video in all_videos:
-        if not video.tags:
-            continue
-
-        video_tags = [t.strip().lower() for t in video.tags.split(',') if t.strip()]
+    for v in popular:
+        candidate_ids.add(v.id)
+    
+    # Свежие
+    fresh = db.query(models.Video)\
+        .filter(
+            models.Video.is_private == False,
+            models.Video.id.notin_(watched_ids)
+        )\
+        .order_by(models.Video.upload_date.desc())\
+        .limit(30)\
+        .all()
+    for v in fresh:
+        candidate_ids.add(v.id)
+    
+    # 4. Загружаем кандидатов и сортируем
+    candidates = db.query(models.Video)\
+        .filter(models.Video.id.in_(candidate_ids))\
+        .all()
+    
+    scored = []
+    for video in candidates:
+        score = 0.0
         
-        # Считаем score для этого видео
-        video_score = sum(tag_score.get(tag, 0) for tag in video_tags)
-        match_tags = [tag for tag in video_tags if tag in tag_score]
-
+        if video.tags and tag_score:
+            video_tags = [t.strip().lower() for t in video.tags.split(',') if t.strip()]
+            score += sum(tag_score.get(tag, 0) for tag in video_tags) * 3
+        
+        if video.author_id in author_score:
+            score += author_score[video.author_id] * 2
+        
+        score += min(video.views or 0, 10000) / 10000 * 0.5
+        days_ago = (datetime.utcnow() - video.upload_date).days
+        score += max(0, 1.0 - days_ago / 30) * 1.0
+        
         video_dict = format_video(video, include_thumbnail=True, fields=[
             "id", "title", "author", "author_id", "views", "upload_date", "thumbnail"
         ])
-        video_dict["score"] = video_score  # добавляем score отдельно
-        video_dict["match_tags"] = match_tags
-
-        if video_score > 0:
-            recommendations.append(video_dict)
-
-    # Сортируем по score (чем выше — тем лучше)
-    recommendations.sort(key=lambda x: x["score"], reverse=True)
-
-    return recommendations[:limit]
+        video_dict["score"] = round(score, 3)
+        scored.append(video_dict)
+    
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    
+    return scored[skip:skip + limit]
 
 @app.post("/api/playlists/", response_model=schemas.PlaylistOut)
 def create_playlist(

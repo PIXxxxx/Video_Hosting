@@ -29,31 +29,14 @@ def get_db_session():
     from database import SessionLocal
     return SessionLocal()
 
-def run_ffmpeg(cmd, timeout=480):
-    """Запуск FFmpeg с правильной кодировкой"""
-    return subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', timeout=timeout)
-
 def has_audio_stream(file_path):
-    cmd = [FFMPEG_PATH, '-i', file_path, '-hide_banner']
-    result = run_ffmpeg(cmd, timeout=10)
-    return 'Audio:' in result.stderr
-
-def get_video_dimensions(file_path):
-    """Получить ширину и высоту видео"""
-    cmd = [FFMPEG_PATH, '-i', file_path, '-hide_banner']
-    result = run_ffmpeg(cmd, timeout=10)
-    for line in result.stderr.split('\n'):
-        if 'Stream' in line and 'Video' in line:
-            # Ищем что-то вроде "1920x1080" или "1080x1080"
-            import re
-            match = re.search(r'(\d{2,4})x(\d{2,4})', line)
-            if match:
-                return int(match.group(1)), int(match.group(2))
-    return None, None
+    cmd = [FFMPEG_PATH, '-i', file_path]
+    result = subprocess.run(cmd, capture_output=True, text=True, errors='ignore')
+    return ('Audio:' in result.stderr or '')
 
 @celery_app.task(bind=True, name='process_video_task')
 def process_video_task(self, video_id, input_path):
-    """Обработка видео с поддержкой любых соотношений сторон"""
+    """Оптимизированная обработка видео: FFmpeg + Shaka Packager"""
     
     print(f"\n{'='*85}")
     print(f"🎬 ОБРАБОТКА ВИДЕО {video_id}")
@@ -72,51 +55,30 @@ def process_video_task(self, video_id, input_path):
     master_playlist = os.path.join(video_dir, "master.m3u8")
     thumbnail_path = os.path.join(thumbnails_dir, f"{video_id}.jpg")
 
-    # Определяем размеры исходного видео
-    src_width, src_height = get_video_dimensions(input_path)
-    if not src_width:
-        print("⚠️ Не удалось определить размеры видео, использую 16:9")
-        src_width, src_height = 1920, 1080
+    # ========== 1. Кодирование разных качеств (ОДИН РАЗ) ==========
+    print("\n🔄 [1/2] Кодирование видео в разные качества...")
     
-    aspect_ratio = src_width / src_height
-    print(f"📐 Исходное видео: {src_width}x{src_height} (соотношение: {aspect_ratio:.2f})")
-
-    # ========== 1. Кодирование ==========
-    print("\n🔄 [1/2] Кодирование видео...")
-    
-    # Динамические разрешения с сохранением пропорций
     renditions = [
-        {"name": "360p",  "height": 360},
-        {"name": "480p",  "height": 480},
-        {"name": "720p",  "height": 720},
-        {"name": "1080p", "height": 1080},
+        {"name": "360p",  "width": 640,  "height": 360,  "bitrate": "800k",  "maxrate": "856k",  "bufsize": "1200k"},
+        {"name": "480p",  "width": 854,  "height": 480,  "bitrate": "1400k", "maxrate": "1498k", "bufsize": "2100k"},
+        {"name": "720p",  "width": 1280, "height": 720,  "bitrate": "2800k", "maxrate": "2996k", "bufsize": "4200k"},
+        {"name": "1080p", "width": 1920, "height": 1080, "bitrate": "5000k", "maxrate": "5350k", "bufsize": "7500k"},
     ]
-    
-    # Не кодируем качество выше исходного
-    renditions = [r for r in renditions if r["height"] <= src_height]
 
     for r in renditions:
-        h = r["height"]
-        w = round(h * aspect_ratio)
-        # Ширина должна быть чётной
-        if w % 2 != 0:
-            w += 1
-        
         output_mp4 = os.path.join(video_dir, f"{r['name']}.mp4")
-        
-        bitrate_map = {360: "800k", 480: "1400k", 720: "2800k", 1080: "5000k"}
-        maxrate_map = {360: "856k", 480: "1498k", 720: "2996k", 1080: "5350k"}
-        bufsize_map = {360: "1200k", 480: "2100k", 720: "4200k", 1080: "7500k"}
         
         cmd = [
             FFMPEG_PATH, '-i', input_path,
-            '-vf', f"scale={w}:{h}:force_original_aspect_ratio=decrease",
+            '-vf', f"scale={r['width']}:{r['height']}:force_original_aspect_ratio=decrease,"
+                   f"pad={r['width']}:{r['height']}:(ow-iw)/2:(oh-ih)/2",
             '-c:v', 'libx264',
             '-preset', 'veryfast',
-            '-b:v', bitrate_map.get(h, "1400k"),
-            '-maxrate', maxrate_map.get(h, "1498k"),
-            '-bufsize', bufsize_map.get(h, "2100k"),
+            '-b:v', r['bitrate'],
+            '-maxrate', r['maxrate'],
+            '-bufsize', r['bufsize'],
             '-profile:v', 'high',
+            '-level', '4.0',
             '-pix_fmt', 'yuv420p',
             '-c:a', 'aac',
             '-b:a', '128k',
@@ -127,27 +89,28 @@ def process_video_task(self, video_id, input_path):
             output_mp4
         ]
 
-        print(f"   → Кодирую {r['name']} ({w}x{h})...")
+        print(f"   → Кодирую {r['name']} ({r['bitrate']})...")
         try:
-            result = run_ffmpeg(cmd, timeout=480)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=480)
             if result.returncode == 0 and os.path.exists(output_mp4):
-                print(f"   ✅ {r['name']} готов ({w}x{h})")
+                print(f"   ✅ {r['name']} готов")
             else:
                 print(f"   ❌ Ошибка при кодировании {r['name']}")
                 if result.stderr:
-                    print(f"   {result.stderr[-300:]}")
+                    print(f"   {result.stderr[-500:]}")
                 return {'status': 'failed'}
         except Exception as e:
             print(f"   ❌ Исключение: {e}")
             return {'status': 'failed'}
 
-    # ========== 2. Shaka Packager ==========
-    print("\n📦 [2/2] Создание HLS...")
+    # ========== 2. Упаковка через Shaka Packager ==========
+    print("\n📦 [2/2] Создание HLS через Shaka Packager...")
 
     for r in renditions:
         os.makedirs(os.path.join(video_dir, r['name']), exist_ok=True)
     os.makedirs(os.path.join(video_dir, "audio"), exist_ok=True)
 
+    # Формируем команду Packager (динамически)
     packager_inputs = []
     for r in renditions:
         packager_inputs.append(
@@ -156,18 +119,18 @@ def process_video_task(self, video_id, input_path):
             f"segment_template={video_dir}{r['name']}/$Number$.m4s"
         )
     
-    # Аудио из лучшего качества
-    best_quality = renditions[-1]["name"]
+    # Добавляем аудио (из 1080p)
+    # TODO: Протестить проверку на наличие аудио в видео
     if has_audio_stream(input_path):
         packager_inputs.append(
-            f"in={video_dir}{best_quality}.mp4,stream=audio,"
+            f"in={video_dir}1080p.mp4,stream=audio,"
             f"init_segment={video_dir}audio/init.mp4,"
             f"segment_template={video_dir}audio/$Number$.m4s"
         )
     
     packager_cmd = [
         r"..\packager.exe",
-        *packager_inputs,
+        *packager_inputs,  # распаковываем список
         "--generate_static_live_mpd",
         "--hls_master_playlist_output", master_playlist,
         "--segment_duration", "6",
@@ -176,7 +139,7 @@ def process_video_task(self, video_id, input_path):
     print("   → Запускаем Shaka Packager...")
     hls_success = False
     try:
-        result = run_ffmpeg(packager_cmd, timeout=300)
+        result = subprocess.run(packager_cmd, capture_output=True, text=True, timeout=300)
         
         if result.returncode == 0 and os.path.exists(master_playlist):
             with open(master_playlist, 'r', encoding='utf-8') as f:
@@ -190,7 +153,7 @@ def process_video_task(self, video_id, input_path):
         else:
             print(f"   ❌ Ошибка Packager")
             if result.stderr:
-                print(f"   {result.stderr[-300:]}")
+                print(f"   {result.stderr[-500:]}")
     except Exception as e:
         print(f"   ❌ Исключение: {e}")
 
@@ -204,7 +167,7 @@ def process_video_task(self, video_id, input_path):
     ]
     
     try:
-        result = run_ffmpeg(cmd_thumb, timeout=30)
+        result = subprocess.run(cmd_thumb, capture_output=True, text=True, timeout=30)
         if result.returncode == 0 and os.path.exists(thumbnail_path):
             print("   ✅ Миниатюра создана")
     except Exception as e:
