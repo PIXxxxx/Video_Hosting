@@ -10,7 +10,7 @@ interface VidicCardProps {
   upload_date: string;
   author_id: number;
   author?: string;
-  thumbnail?: string;
+  thumbnail_path?: string | null;
 }
 
 const VidicCard: React.FC<VidicCardProps> = ({
@@ -20,7 +20,7 @@ const VidicCard: React.FC<VidicCardProps> = ({
   upload_date,
   author_id,
   author,
-  thumbnail,
+  thumbnail_path,
 }) => {
   const formatViews = (views: number): string => {
     if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
@@ -28,11 +28,15 @@ const VidicCard: React.FC<VidicCardProps> = ({
     return views.toString();
   };
 
+  const thumbnailUrl = thumbnail_path 
+    ? `http://localhost:8000/media/${thumbnail_path}`
+    : `http://localhost:8000/media/vidic_thumbnails/${id}.jpg`;
+
   return (
     <Link to={`/vidic?video=${id}`} className="vidic-card">
       <div className="vidic-card-thumbnail">
         <img 
-          src={thumbnail || `https://via.placeholder.com/720x1280/1a1a1a/ffffff?text=Vidic`} 
+          src={thumbnailUrl}
           alt={title}
           onError={(e) => {
             e.currentTarget.src = 'https://via.placeholder.com/720x1280/1a1a1a/ffffff?text=Vidic';

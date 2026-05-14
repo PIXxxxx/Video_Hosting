@@ -3,6 +3,7 @@ from celery import Celery
 import subprocess
 import os
 import sys
+from models import VidicVideo
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -30,10 +31,26 @@ def get_db_session():
     from database import SessionLocal
     return SessionLocal()
 
-def has_audio_stream(file_path):
-    cmd = [FFMPEG_PATH, '-i', file_path]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    return 'Audio:' in result.stderr
+def run_ffmpeg(cmd: list, timeout: int = 480) -> subprocess.CompletedProcess:
+    """Запуск FFmpeg с правильной кодировкой"""
+    return subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding='utf-8',
+        errors='ignore',
+        timeout=timeout
+    )
+
+def has_audio_stream(file_path: str) -> bool:
+    """Проверяет наличие аудио в видео"""
+    try:
+        cmd = [FFMPEG_PATH, '-i', file_path, '-hide_banner']
+        result = run_ffmpeg(cmd, timeout=10)
+        return 'Audio:' in result.stderr or 'audio' in result.stderr.lower()
+    except Exception as e:
+        print(f"   ⚠️ Ошибка проверки аудио: {e}")
+        return True  # по умолчанию считаем, что аудио есть
 
 @celery_vidic_app.task(bind=True, name='process_vidic_task')
 def process_vidic_task(self, video_id, input_path):
@@ -157,53 +174,46 @@ def process_vidic_task(self, video_id, input_path):
     except Exception as e:
         print(f"   ❌ Исключение: {e}")
 
-    # ========== 3. Вертикальная миниатюра ==========
+    # ========== 3. Автоматическая миниатюра для Vidic ==========
     print("\n🖼️ Создание вертикальной миниатюры...")
+
+    thumbnail_filename = f"{video_id}.jpg"
+    thumbnail_path = f"media/vidic_thumbnails/{thumbnail_filename}"
+    os.makedirs("media/vidic_thumbnails", exist_ok=True)
+
+    # Берём кадр со 2-й секунды и делаем вертикальную миниатюру
     cmd_thumb = [
         FFMPEG_PATH, '-i', input_path,
-        '-ss', '00:00:03', '-vframes', '1',
-        '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280',
+        '-ss', '00:00:02',           # со 2-й секунды
+        '-vframes', '1',
+        '-vf', 'scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2',
         '-y', thumbnail_path
     ]
     
+    thumbnail_db_path = None
     try:
         result = subprocess.run(cmd_thumb, capture_output=True, text=True, timeout=30)
         if result.returncode == 0 and os.path.exists(thumbnail_path):
-            print("   ✅ Миниатюра создана")
+            thumbnail_db_path = f"vidic_thumbnails/{thumbnail_filename}"
+            print("   ✅ Миниатюра успешно создана")
+        else:
+            print("   ⚠️ Не удалось создать миниатюру")
     except Exception as e:
-        print(f"   ❌ Ошибка миниатюры: {e}")
+        print(f"   ❌ Ошибка при создании миниатюры: {e}")
 
     # ========== 4. Обновление БД ==========
     db = get_db_session()
     try:
-        from models import VidicVideo  # Используем Video, не VidicVideo!
         video = db.query(VidicVideo).filter(VidicVideo.id == video_id).first()
-        
-        print(f"🔍 Найдено видео в БД: {video is not None}")
-        print(f"📊 hls_success: {hls_success}")
-        
-        if video and hls_success:
-            video.hls_playlist_path = f"media/vidic_videos/{video_id}/master.m3u8"
+        if video:
+            if hls_success:
+                video.hls_playlist_path = f"media/vidic_videos/{video_id}/master.m3u8"
             video.is_processed = True
-            # video.is_vertical уже True
+            video.thumbnail_path = thumbnail_db_path   # ← сохраняем в БД
             db.commit()
-            print(f"\n✅ Vidic видео {video_id} успешно обработано!")
-            print(f"📁 HLS путь сохранен: {video.hls_playlist_path}")
-            
-            # Удаляем исходный файл
-            if os.path.exists(input_path):
-                os.remove(input_path)
-                print(f"🗑️ Исходный файл удален: {input_path}")
-        else:
-            print(f"⚠️ Видео {video_id} не найдено или HLS не создан")
-            if not video:
-                print(f"   → Видео с id={video_id} не существует в БД")
-            if not hls_success:
-                print(f"   → HLS не создан")
+            print(f"✅ Vidic видео {video_id} полностью обработано")
     except Exception as e:
-        print(f"❌ Ошибка БД: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ Ошибка обновления БД: {e}")
         db.rollback()
     finally:
         db.close()

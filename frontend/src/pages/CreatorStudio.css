@@ -1,0 +1,69 @@
+/* src/pages/CreatorStudio.css */
+.studio-page {
+  padding: 24px 32px;
+  background: var(--yt-bg-primary);
+  min-height: 100vh;
+}
+
+.studio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.studio-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--yt-border);
+  margin-bottom: 24px;
+}
+
+.studio-tabs button {
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+}
+
+.studio-tabs button.active {
+  border-bottom-color: var(--yt-accent);
+  color: var(--yt-accent);
+}
+
+.studio-video-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.studio-video-item input[type="checkbox"] {
+  margin-top: 8px;
+  accent-color: var(--yt-accent);
+}
+
+.edit-link {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--yt-bg-secondary);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--yt-accent);
+  text-decoration: none;
+}
+
+.delete-selected-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-weight: 600;
+}

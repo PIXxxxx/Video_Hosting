@@ -47,7 +47,7 @@ interface VidicVideo {
   upload_date: string;
   author: string;
   author_id: number;
-  thumbnail?: string;
+  thumbnail_path?: string | null;
   video_url: string;
 }
 
@@ -364,7 +364,7 @@ const ChannelPage: React.FC = () => {
                     upload_date={video.upload_date}
                     author_id={video.author_id}
                     author={video.author}
-                    thumbnail={video.thumbnail}
+                    thumbnail_path={video.thumbnail_path}
                   />
                 ))}
               </div>

@@ -1242,8 +1242,6 @@ async def upload_vidic(
         raise HTTPException(status_code=500, detail=f"Ошибка загрузки: {str(e)}")
 
 
-# main.py - обновите get_vidic_feed
-
 @app.get("/api/vidic/feed")
 def get_vidic_feed(
     skip: int = Query(0, ge=0),
@@ -1453,3 +1451,97 @@ def add_vidic_comment(
     db.commit()
     db.refresh(new_comment)
     return {"message": "Комментарий добавлен", "id": new_comment.id}
+
+@app.delete("/api/vidic/{video_id}")
+def delete_vidic_video(
+    video_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    video = db.query(models.VidicVideo).filter(models.VidicVideo.id == video_id).first()
+    if not video or video.author_id != current_user.id:
+        raise HTTPException(403, "Вы не автор этого видео")
+    
+    try:
+        # Удаляем файлы
+        if video.file_path and os.path.exists(video.file_path):
+            os.remove(video.file_path)
+        
+        if video.hls_playlist_path:
+            hls_dir = os.path.dirname(video.hls_playlist_path)
+            if os.path.exists(hls_dir):
+                shutil.rmtree(hls_dir, ignore_errors=True)
+        
+        # Удаляем миниатюру
+        thumb = f"media/vidic_thumbnails/{video_id}.jpg"
+        if os.path.exists(thumb):
+            os.remove(thumb)
+            
+    except Exception as e:
+        print(f"Ошибка удаления файлов Vidic: {e}")
+    
+    db.delete(video)
+    db.commit()
+    return {"message": "Vidic видео полностью удалено"}
+
+@app.put("/api/vidic/{video_id}/metadata")
+async def update_vidic_metadata(
+    video_id: int,
+    update_data: schemas.VideoUpdate,  # Можно использовать тот же, что и для обычных видео
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    video = db.query(models.VidicVideo).filter(models.VidicVideo.id == video_id).first()
+    if not video:
+        raise HTTPException(404, "Vidic видео не найдено")
+    
+    if video.author_id != current_user.id:
+        raise HTTPException(403, "Вы не автор этого видео")
+
+    if update_data.title is not None:
+        video.title = update_data.title
+    if update_data.description is not None:
+        video.description = update_data.description
+    if update_data.tags is not None:
+        video.tags = update_data.tags.strip() if update_data.tags else None
+
+    db.commit()
+    db.refresh(video)
+    
+    return {"message": "Метаданные Vidic обновлены", "video": video}
+
+@app.get("/api/me/vidic")
+def get_my_vidic_videos(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_active_user)
+):
+    """Получить все Vidic видео текущего пользователя (для Творческой студии)"""
+    
+    videos = db.query(models.VidicVideo).filter(
+        models.VidicVideo.author_id == current_user.id
+    ).order_by(models.VidicVideo.upload_date.desc()).all()
+    
+    result = []
+    for video in videos:
+        video_url = None
+        if video.hls_playlist_path:
+            video_url = f"http://localhost:8000/{video.hls_playlist_path.replace(chr(92), '/')}"
+        elif video.file_path:
+            video_url = f"http://localhost:8000/{video.file_path.replace(chr(92), '/')}"
+        
+        thumbnail = f"http://localhost:8000/media/vidic_thumbnails/{video.id}.jpg"
+        
+        result.append({
+            "id": video.id,
+            "title": video.title,
+            "description": video.description or "",
+            "views": video.views or 0,
+            "upload_date": video.upload_date.isoformat(),
+            "author_id": video.author_id,
+            "author": video.author.username if video.author else "Unknown",
+            "thumbnail": thumbnail,
+            "is_processed": video.is_processed,
+            "video_url": video_url
+        })
+    
+    return result

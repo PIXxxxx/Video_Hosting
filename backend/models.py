@@ -56,7 +56,9 @@ class VidicVideo(Base):
     views = Column(Integer, default=0)
     likes = Column(Integer, default=0)
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
+
+    thumbnail_path = Column(String(500), nullable=True)
+
     author = relationship("User", backref="vidic_videos")
 
 class VidicLike(Base):

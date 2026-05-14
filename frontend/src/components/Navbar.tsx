@@ -252,6 +252,11 @@ const Navbar: React.FC = () => {
                     <VidicIcon />
                     Vidic
                   </Link>
+
+                  <Link to="/studio" className="sidebar-item" onClick={() => setMenuOpen(false)}>
+                    <svg viewBox="0 0 24 24"> {/* иконка студии */} </svg>
+                    Творческая студия
+                  </Link>
                 </div>
               )}
 
