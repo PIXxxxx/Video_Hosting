@@ -1545,3 +1545,18 @@ def get_my_vidic_videos(
         })
     
     return result
+
+@app.post("/api/vidic/{video_id}/view")
+def increment_vidic_view(
+    video_id: int,
+    db: Session = Depends(get_db)
+):
+    """Увеличение счётчика просмотров Vidic видео"""
+    video = db.query(VidicVideo).filter(VidicVideo.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Видео не найдено")
+    
+    video.views = (video.views or 0) + 1
+    db.commit()
+    
+    return {"message": "Просмотр засчитан", "views": video.views}
