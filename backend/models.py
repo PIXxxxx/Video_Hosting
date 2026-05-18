@@ -61,6 +61,21 @@ class VidicVideo(Base):
 
     author = relationship("User", backref="vidic_videos")
 
+class PlaylistVidicVideo(Base):
+    __tablename__ = "playlist_vidic_videos"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    playlist_id = Column(Integer, ForeignKey("playlists.id"), nullable=False)
+    vidic_video_id = Column(Integer, ForeignKey("vidic_videos.id"), nullable=False)
+    position = Column(Integer, default=0)
+    
+    playlist = relationship("Playlist", back_populates="vidic_videos")
+    vidic_video = relationship("VidicVideo")
+
+    __table_args__ = (
+        UniqueConstraint('playlist_id', 'vidic_video_id', name='unique_playlist_vidic_video'),
+    )
+
 class VidicLike(Base):
     __tablename__ = "vidic_likes"
     
@@ -147,6 +162,12 @@ class Playlist(Base):
     
     videos = relationship(
         "PlaylistVideo",
+        back_populates="playlist",
+        cascade="all, delete-orphan"
+    )
+
+    vidic_videos = relationship(
+        "PlaylistVidicVideo",
         back_populates="playlist",
         cascade="all, delete-orphan"
     )

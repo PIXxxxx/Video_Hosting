@@ -117,6 +117,10 @@ def format_videos(
 
 def format_playlist(playlist, videos):
     """Форматирует плейлист с видео"""
+    thumbnail = None
+    if videos:
+        last_video = videos[-1]  # последнее по position
+        thumbnail = last_video.get("thumbnail") if isinstance(last_video, dict) else None
     return {
         "id": playlist.id,
         "title": playlist.title,
@@ -126,6 +130,7 @@ def format_playlist(playlist, videos):
         "author": playlist.author.username,
         "videos_count": len(videos),
         "videos": videos,
+        "thumbnail": thumbnail,
         "created_at": playlist.created_at.isoformat()
     }
 
@@ -168,9 +173,20 @@ def register(
         hashed_password=hashed_password
     )
     
+    # Сначала сохраняем пользователя
     db.add(db_user)
     db.commit()
-    db.refresh(db_user)
+    db.refresh(db_user)  # ← теперь у db_user есть id
+    
+    # Потом создаём плейлист
+    liked_playlist = models.Playlist(
+        title="Понравившиеся",
+        description="Видео, которые вам понравились",
+        is_private=False,
+        author_id=db_user.id  # ← id уже есть
+    )
+    db.add(liked_playlist)
+    db.commit()
     
     return db_user
 
@@ -393,27 +409,33 @@ def get_videos_count(db: Session = Depends(get_db)):
 
 @app.get("/api/channel/{user_id}")
 def get_channel(
-    user_id: int, 
+    user_id: int,
+    page: int = Query(1, ge=1),
+    limit: int = Query(12, ge=1, le=50),
     db: Session = Depends(get_db)
 ):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
+    offset = (page - 1) * limit
+    total_videos = db.query(models.Video).filter(
+        models.Video.author_id == user_id
+    ).count()
+
     videos = (
         db.query(models.Video)
         .filter(models.Video.author_id == user_id)
         .order_by(models.Video.upload_date.desc())
-        .limit(20)
+        .offset(offset)
+        .limit(limit)
         .all()
     )
 
     video_list = format_videos(videos, include_thumbnail=True)
-    # TODO: Автор уже должен быть - Проверить
     for v in video_list:
         v["author"] = user.username
 
-    # === Логика аватарки и шапки ===
     avatar_url = f"https://ui-avatars.com/api/?name={user.username}&background=random"
     if user.avatar_path:
         avatar_url = f"{settings.MEDIA_URL}/{user.avatar_path}"
@@ -425,10 +447,11 @@ def get_channel(
     return {
         "id": user.id,
         "username": user.username,
-        "avatar_url": avatar_url,      # ← теперь всегда правильный URL
-        "banner_url": banner_url,      # ← шапка
-        "videos_count": len(video_list),
+        "avatar_url": avatar_url,
+        "banner_url": banner_url,
+        "videos_count": total_videos,
         "videos": video_list,
+        "has_more": offset + limit < total_videos
     }
 
 @app.put("/api/video/{video_id}/metadata")
@@ -568,6 +591,43 @@ def toggle_like(
         like = models.Like(video_id=video_id, user_id=current_user.id, is_like=like_data.is_like)
         db.add(like)
     
+    if like_data.is_like == True:
+            playlist = db.query(models.Playlist).filter(
+                models.Playlist.author_id == current_user.id,
+                models.Playlist.title == "Понравившиеся"
+            ).first()
+            
+            # Если плейлиста нет — создаём
+            if not playlist:
+                playlist = models.Playlist(
+                    title="Понравившиеся",
+                    description="Видео, которые вам понравились",
+                    is_private=False,
+                    author_id=current_user.id
+                )
+                db.add(playlist)
+                db.flush()
+            
+            # Проверяем нет ли уже в плейлисте
+            existing = db.query(models.PlaylistVideo).filter(
+                models.PlaylistVideo.playlist_id == playlist.id,
+                models.PlaylistVideo.video_id == video_id
+            ).first()
+            
+            if not existing:
+                max_pos = db.query(models.PlaylistVideo).filter(
+                    models.PlaylistVideo.playlist_id == playlist.id
+                ).order_by(models.PlaylistVideo.position.desc()).first()
+                
+                position = (max_pos.position + 1) if max_pos else 0
+                
+                pv = models.PlaylistVideo(
+                    playlist_id=playlist.id,
+                    video_id=video_id,
+                    position=position
+                )
+                db.add(pv)
+
     db.commit()
     return {"message": "Лайк обновлён"}
 
@@ -958,6 +1018,18 @@ def get_my_playlists(
         video_count = db.query(models.PlaylistVideo).filter(
             models.PlaylistVideo.playlist_id == p.id
         ).count()
+
+        last_pv = db.query(models.PlaylistVideo)\
+            .join(models.Video)\
+            .filter(models.PlaylistVideo.playlist_id == p.id)\
+            .order_by(models.PlaylistVideo.position.desc())\
+            .first()
+
+        thumbnail = None
+        if last_pv and last_pv.video:
+            thumbnail = f"{settings.MEDIA_URL}/thumbnails/{last_pv.video.id}.jpg"
+            if last_pv.video.custom_thumbnail_path:
+                thumbnail = f"{settings.MEDIA_URL}/{last_pv.video.custom_thumbnail_path}"
         
         result.append({
             "id": p.id,
@@ -967,6 +1039,7 @@ def get_my_playlists(
             "author_id": p.author_id,
             "author": current_user.username,
             "videos_count": video_count,
+            "thumbnail": thumbnail, 
             "created_at": p.created_at.isoformat()
         })
     return result
@@ -1337,6 +1410,77 @@ def get_vidic_feed(
     
     return result
 
+@app.delete("/api/vidic/{video_id}")
+def delete_vidic_video(
+    video_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    video = db.query(models.VidicVideo).filter(models.VidicVideo.id == video_id).first()
+    if not video or video.author_id != current_user.id:
+        raise HTTPException(403, "Вы не автор этого видео")
+    
+    try:
+        # Удаляем файлы
+        if video.file_path and os.path.exists(video.file_path):
+            os.remove(video.file_path)
+        
+        if video.hls_playlist_path:
+            hls_dir = os.path.dirname(video.hls_playlist_path)
+            if os.path.exists(hls_dir):
+                shutil.rmtree(hls_dir, ignore_errors=True)
+        
+        # Удаляем миниатюру
+        thumb = f"media/vidic_thumbnails/{video_id}.jpg"
+        if os.path.exists(thumb):
+            os.remove(thumb)
+            
+    except Exception as e:
+        print(f"Ошибка удаления файлов Vidic: {e}")
+    
+    db.delete(video)
+    db.commit()
+    return {"message": "Vidic видео полностью удалено"}
+
+@app.get("/api/vidic/{video_id}/info")
+def get_vidic_video(
+    video_id: int,
+    db: Session = Depends(get_db)
+):
+    """Получить информацию об одном Vidic видео"""
+    video = db.query(VidicVideo).filter(VidicVideo.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Vidic видео не найдено")
+    
+    # Формируем URL для HLS
+    video_url = None
+    if video.hls_playlist_path:
+        video_url = f"http://localhost:8000/{video.hls_playlist_path.replace(chr(92), '/')}"
+    elif video.file_path:
+        video_url = f"http://localhost:8000/{video.file_path.replace(chr(92), '/')}"
+    
+    # Миниатюра
+    thumbnail = f"http://localhost:8000/media/vidic_thumbnails/{video.id}.jpg"
+    
+    # Теги
+    tags = video.tags.split(',') if video.tags else []
+    tags = [t.strip() for t in tags if t.strip()]
+    
+    return {
+        "id": video.id,
+        "title": video.title,
+        "description": video.description or "",
+        "tags": video.tags,
+        "video_url": video_url,
+        "views": video.views or 0,
+        "author_id": video.author_id,
+        "author": video.author.username if video.author else "Unknown",
+        "thumbnail": thumbnail,
+        "upload_date": video.upload_date.isoformat(),
+        "is_processed": video.is_processed
+    }
+
+
 @app.post("/api/vidic/{video_id}/like")
 async def like_vidic_video(
     video_id: int,
@@ -1347,47 +1491,68 @@ async def like_vidic_video(
     try:
         print(f"👍 Лайк видео {video_id} от пользователя {current_user.username}")
         
-        # Проверяем, существует ли видео
         video = db.query(VidicVideo).filter(VidicVideo.id == video_id).first()
         if not video:
             raise HTTPException(status_code=404, detail="Vidic видео не найдено")
         
-        # Проверяем, есть ли уже лайк от этого пользователя
         existing_like = db.query(VidicLike).filter(
             VidicLike.video_id == video_id,
             VidicLike.user_id == current_user.id
         ).first()
         
         if existing_like:
-            # Если лайк уже есть - удаляем
+            # Убираем лайк
             db.delete(existing_like)
             db.commit()
             likes_count = db.query(VidicLike).filter(VidicLike.video_id == video_id).count()
-            print(f"👎 Лайк убран. Всего лайков: {likes_count}")
-            return {
-                "liked": False,
-                "likes_count": likes_count
-            }
+            return {"liked": False, "likes_count": likes_count}
         else:
-            # Создаем новый лайк
-            new_like = VidicLike(
-                video_id=video_id,
-                user_id=current_user.id
-            )
+            # Ставим лайк
+            new_like = VidicLike(video_id=video_id, user_id=current_user.id)
             db.add(new_like)
+            db.flush()
+            
+            # 🔥 Плейлист
+            playlist = db.query(models.Playlist).filter(
+                models.Playlist.author_id == current_user.id,
+                models.Playlist.title == "Понравившиеся Vidic"
+            ).first()
+            
+            if not playlist:
+                playlist = models.Playlist(
+                    title="Понравившиеся Vidic",
+                    description="Вертикальные видео, которые вам понравились",
+                    is_private=False,
+                    author_id=current_user.id
+                )
+                db.add(playlist)
+                db.flush()
+            
+            # Проверяем есть ли уже в плейлисте
+            existing_pv = db.query(models.PlaylistVidicVideo).filter(
+                models.PlaylistVidicVideo.playlist_id == playlist.id,
+                models.PlaylistVidicVideo.vidic_video_id == video_id
+            ).first()
+            
+            if not existing_pv:
+                pv = models.PlaylistVidicVideo(
+                    playlist_id=playlist.id,
+                    vidic_video_id=video_id,
+                    position=0
+                )
+                db.add(pv)
+                print(f"📁 Видео {video_id} добавлено в плейлист 'Понравившиеся Vidic'")
+            else:
+                print(f"📁 Видео {video_id} уже в плейлисте")
+            
             db.commit()
             likes_count = db.query(VidicLike).filter(VidicLike.video_id == video_id).count()
-            print(f"👍 Лайк поставлен. Всего лайков: {likes_count}")
-            return {
-                "liked": True,
-                "likes_count": likes_count
-            }
+            return {"liked": True, "likes_count": likes_count}
             
     except Exception as e:
         print(f"❌ Ошибка при лайке: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.get("/api/vidic/{video_id}/likes")
 def get_vidic_likes(
@@ -1494,38 +1659,6 @@ def add_vidic_comment(
     db.refresh(new_comment)
     return {"message": "Комментарий добавлен", "id": new_comment.id}
 
-@app.delete("/api/vidic/{video_id}")
-def delete_vidic_video(
-    video_id: int,
-    current_user: models.User = Depends(auth.get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    video = db.query(models.VidicVideo).filter(models.VidicVideo.id == video_id).first()
-    if not video or video.author_id != current_user.id:
-        raise HTTPException(403, "Вы не автор этого видео")
-    
-    try:
-        # Удаляем файлы
-        if video.file_path and os.path.exists(video.file_path):
-            os.remove(video.file_path)
-        
-        if video.hls_playlist_path:
-            hls_dir = os.path.dirname(video.hls_playlist_path)
-            if os.path.exists(hls_dir):
-                shutil.rmtree(hls_dir, ignore_errors=True)
-        
-        # Удаляем миниатюру
-        thumb = f"media/vidic_thumbnails/{video_id}.jpg"
-        if os.path.exists(thumb):
-            os.remove(thumb)
-            
-    except Exception as e:
-        print(f"Ошибка удаления файлов Vidic: {e}")
-    
-    db.delete(video)
-    db.commit()
-    return {"message": "Vidic видео полностью удалено"}
-
 @app.put("/api/vidic/{video_id}/metadata")
 async def update_vidic_metadata(
     video_id: int,
@@ -1602,3 +1735,308 @@ def increment_vidic_view(
     db.commit()
     
     return {"message": "Просмотр засчитан", "views": video.views}
+
+@app.get("/api/playlists/user/{user_id}")
+def get_user_playlists(
+    user_id: int,
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Получить публичные плейлисты пользователя"""
+    playlists = db.query(models.Playlist).filter(
+        models.Playlist.author_id == user_id,
+        models.Playlist.title != "Понравившиеся Vidic"
+    ).order_by(models.Playlist.created_at.desc()).all()
+    
+    result = []
+    for p in playlists:
+        # Пропускаем приватные для чужих
+        if p.is_private and (not current_user or current_user.id != p.author_id):
+            continue
+        
+        video_count = db.query(models.PlaylistVideo).filter(
+            models.PlaylistVideo.playlist_id == p.id
+        ).count()
+        
+        last_pv = db.query(models.PlaylistVideo)\
+            .join(models.Video)\
+            .filter(models.PlaylistVideo.playlist_id == p.id)\
+            .order_by(models.PlaylistVideo.position.desc())\
+            .first()
+
+        thumbnail = None
+        if last_pv and last_pv.video:
+            thumbnail = f"{settings.MEDIA_URL}/thumbnails/{last_pv.video.id}.jpg"
+            if last_pv.video.custom_thumbnail_path:
+                thumbnail = f"{settings.MEDIA_URL}/{last_pv.video.custom_thumbnail_path}"
+        
+        result.append({
+            "id": p.id,
+            "title": p.title,
+            "description": p.description,
+            "is_private": p.is_private,
+            "author_id": p.author_id,
+            "author": p.author.username if p.author else "Unknown",
+            "videos_count": video_count,
+            "thumbnail": thumbnail,
+            "created_at": p.created_at.isoformat()
+        })
+    return result
+
+@app.get("/api/vidic/recommendations")
+def get_vidic_recommendations(
+    limit: int = Query(10, ge=1, le=30),
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    """Персональные рекомендации Vidic видео"""
+    
+    # 1. Собираем данные о предпочтениях
+    liked_authors = set()
+    liked_tags = {}
+    liked_video_ids = set()  # ← ДОБАВИТЬ
+    watched_ids = set()
+    
+    if current_user:
+        # Лайкнутые видео
+        liked_videos = db.query(VidicLike).filter(
+            VidicLike.user_id == current_user.id
+        ).all()
+        
+        for lv in liked_videos:
+            liked_video_ids.add(lv.video_id)  # ← ДОБАВИТЬ
+            video = db.query(VidicVideo).filter(VidicVideo.id == lv.video_id).first()
+            if video:
+                liked_authors.add(video.author_id)
+                if video.tags:
+                    for tag in [t.strip().lower() for t in video.tags.split(',') if t.strip()]:
+                        liked_tags[tag] = liked_tags.get(tag, 0) + 1
+        
+        # История просмотров (последние 10)
+        history = db.query(models.WatchHistory)\
+            .filter(models.WatchHistory.user_id == current_user.id)\
+            .order_by(models.WatchHistory.watched_at.desc())\
+            .limit(10)\
+            .all()
+        
+        watched_ids = {h.video_id for h in history}
+        
+        # Авторы из истории
+        for h in history:
+            video = db.query(models.Video).filter(models.Video.id == h.video_id).first()
+            if video:
+                liked_authors.add(video.author_id)
+    
+    # Объединяем все исключаемые ID ← ДОБАВИТЬ
+    exclude_ids = liked_video_ids | watched_ids
+    
+    # 2. Собираем кандидатов
+    candidates = []
+    seen_vidic_ids = set()
+    
+    # По авторам
+    for author_id in liked_authors:
+        author_videos = db.query(VidicVideo).filter(
+            VidicVideo.author_id == author_id,
+            VidicVideo.is_processed == True,
+            ~VidicVideo.id.in_(exclude_ids) if exclude_ids else True  # ← ДОБАВИТЬ
+        ).order_by(VidicVideo.upload_date.desc()).limit(10).all()
+        
+        for v in author_videos:
+            if v.id not in seen_vidic_ids:
+                seen_vidic_ids.add(v.id)
+                candidates.append(v)
+    
+    # По тегам
+    if liked_tags:
+        top_tags = sorted(liked_tags, key=liked_tags.get, reverse=True)[:5]
+        for tag in top_tags:
+            tag_videos = db.query(VidicVideo).filter(
+                VidicVideo.is_processed == True,
+                VidicVideo.tags.ilike(f"%{tag}%"),
+                ~VidicVideo.id.in_(exclude_ids) if exclude_ids else True  # ← ДОБАВИТЬ
+            ).order_by(VidicVideo.views.desc()).limit(10).all()
+            
+            for v in tag_videos:
+                if v.id not in seen_vidic_ids:
+                    seen_vidic_ids.add(v.id)
+                    candidates.append(v)
+    
+    # Популярные + свежие
+    if len(candidates) < limit:
+        popular = db.query(VidicVideo).filter(
+            VidicVideo.is_processed == True,
+            ~VidicVideo.id.in_(exclude_ids | seen_vidic_ids) if exclude_ids else True  # ← ИЗМЕНИТЬ
+        ).order_by(VidicVideo.views.desc()).limit(limit * 2).all()
+        candidates.extend(popular)
+    
+    if len(candidates) < limit:
+        fresh = db.query(VidicVideo).filter(
+            VidicVideo.is_processed == True,
+            ~VidicVideo.id.in_(exclude_ids | seen_vidic_ids) if exclude_ids else True  # ← ИЗМЕНИТЬ
+        ).order_by(VidicVideo.upload_date.desc()).limit(limit * 2).all()
+        candidates.extend(fresh)
+    
+    # 3. Сортируем и формируем ответ
+    result = []
+    seen_ids = set()
+    
+    for video in candidates[:limit * 3]:
+        if video.id in seen_ids:
+            continue
+        seen_ids.add(video.id)
+        
+        # Считаем score
+        score = 0
+        if video.author_id in liked_authors:
+            score += 3
+        if video.tags and liked_tags:
+            video_tags = [t.strip().lower() for t in video.tags.split(',') if t.strip()]
+            for tag in video_tags:
+                if tag in liked_tags:
+                    score += liked_tags[tag]
+        score += min(video.views or 0, 1000) / 1000  # популярность
+        days_ago = (datetime.utcnow() - video.upload_date).days
+        score += max(0, 1 - days_ago / 7) * 2  # новизна (до 7 дней)
+        
+        # Формируем URL
+        video_url = None
+        if video.hls_playlist_path:
+            video_url = f"http://localhost:8000/{video.hls_playlist_path.replace(chr(92), '/')}"
+        elif video.file_path:
+            video_url = f"http://localhost:8000/{video.file_path.replace(chr(92), '/')}"
+        
+        likes_count = db.query(VidicLike).filter(VidicLike.video_id == video.id).count()
+        is_liked = False
+        if current_user:
+            is_liked = db.query(VidicLike).filter(
+                VidicLike.video_id == video.id,
+                VidicLike.user_id == current_user.id
+            ).first() is not None
+        
+        author = video.author
+        
+        result.append({
+            "id": video.id,
+            "title": video.title,
+            "description": video.description or "",
+            "video_url": video_url,
+            "views": video.views or 0,
+            "likes_count": likes_count,
+            "is_liked": is_liked,
+            "author_id": video.author_id,
+            "author": author.username if author else "Unknown",
+            "author_avatar": f"https://ui-avatars.com/api/?name={author.username}&background=065fd4&color=fff&size=64" if author else None,
+            "upload_date": video.upload_date.isoformat(),
+            "score": round(score, 2)
+        })
+    
+    # Сортируем по score
+    result.sort(key=lambda x: x["score"], reverse=True)
+    
+    return result[:limit]
+
+@app.get("/api/me/liked-playlist")
+def get_liked_playlist(
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Получить плейлист 'Понравившиеся' текущего пользователя"""
+    
+    playlist = db.query(models.Playlist).filter(
+        models.Playlist.author_id == current_user.id,
+        models.Playlist.title == "Понравившиеся"
+    ).first()
+    
+    if not playlist:
+        return {"id": None, "videos": []}
+    
+    playlist_videos = (
+        db.query(models.PlaylistVideo)
+        .join(models.Video)
+        .filter(models.PlaylistVideo.playlist_id == playlist.id)
+        .order_by(models.PlaylistVideo.position.desc())
+        .all()
+    )
+    
+    videos = [format_video(pv.video, include_thumbnail=True) for pv in playlist_videos]
+    
+    return format_playlist(playlist, videos)
+
+@app.get("/api/me/liked-vidic-playlist")
+def get_liked_vidic_playlist(
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Получить плейлист 'Понравившиеся Vidic'"""
+    
+    playlist = db.query(models.Playlist).filter(
+        models.Playlist.author_id == current_user.id,
+        models.Playlist.title == "Понравившиеся Vidic"
+    ).first()
+    
+    if not playlist:
+        return {"playlist": None, "videos": []}
+    
+    # Получаем Vidic видео через PlaylistVidicVideo
+    pvs = db.query(models.PlaylistVidicVideo).filter(
+        models.PlaylistVidicVideo.playlist_id == playlist.id
+    ).order_by(models.PlaylistVidicVideo.position.desc()).all()
+    
+    result = []
+    for pv in pvs:
+        video = pv.vidic_video
+        if video:
+            video_url = None
+            if video.hls_playlist_path:
+                video_url = f"http://localhost:8000/{video.hls_playlist_path.replace(chr(92), '/')}"
+            elif video.file_path:
+                video_url = f"http://localhost:8000/{video.file_path.replace(chr(92), '/')}"
+            
+            result.append({
+                "id": video.id,
+                "title": video.title,
+                "description": video.description or "",
+                "video_url": video_url,
+                "views": video.views or 0,
+                "thumbnail_path": f"http://localhost:8000/media/vidic_thumbnails/{video.id}.jpg",
+                "upload_date": video.upload_date.isoformat()
+            })
+    
+    return {
+        "playlist": {
+            "id": playlist.id,
+            "title": playlist.title,
+            "videos_count": len(result)
+        },
+        "videos": result
+    }
+
+@app.delete("/api/playlist/{playlist_id}")
+def delete_playlist(
+    playlist_id: int,
+    current_user: models.User = Depends(auth.get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Удалить плейлист"""
+    playlist = db.query(models.Playlist).filter(
+        models.Playlist.id == playlist_id,
+        models.Playlist.author_id == current_user.id
+    ).first()
+    
+    if not playlist:
+        raise HTTPException(403, "Нет доступа")
+    
+    # 🔥 Защита от удаления системных плейлистов
+    if playlist.title in ["Понравившиеся", "Понравившиеся Vidic"]:
+        raise HTTPException(400, "Нельзя удалить системный плейлист")
+    
+    # Удаляем связанные видео
+    db.query(models.PlaylistVideo).filter(
+        models.PlaylistVideo.playlist_id == playlist_id
+    ).delete()
+    
+    db.delete(playlist)
+    db.commit()
+    
+    return {"message": "Плейлист удалён"}

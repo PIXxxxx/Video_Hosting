@@ -568,3 +568,41 @@
   background: #cc0000;
 }
 
+.playlist-thumbnail {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: var(--yt-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.playlist-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+.load-more-btn {
+  padding: 12px 32px;
+  background: var(--yt-accent);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.load-more-btn:hover {
+  background: var(--yt-accent-hover);
+}

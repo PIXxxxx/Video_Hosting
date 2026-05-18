@@ -1,8 +1,14 @@
-// src/pages/VidicEditPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import './VideoEditPage.css'; // используем те же стили
+import './VideoEditPage.css';
+
+// SVG иконки
+const DeleteIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+  </svg>
+);
 
 const VidicEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,11 +22,16 @@ const VidicEditPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
   useEffect(() => {
     const fetchVideo = async () => {
       try {
-        const res = await axios.get(`http://localhost:8000/api/vidic/${id}`);
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+        const headers: Record<string, string> = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
+        
+        const res = await axios.get(`http://localhost:8000/api/vidic/${id}/info`, { headers });
         const data = res.data;
         
         setVideo(data);
@@ -53,17 +64,28 @@ const VidicEditPage: React.FC = () => {
     setTags(tags.filter(t => t !== tag));
   };
 
+  const showMessage = (msg: string, type: 'success' | 'error') => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => setMessage(''), 3000);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      
       await axios.put(`http://localhost:8000/api/vidic/${id}/metadata`, {
         title,
         description,
         tags: tags.join(', ')
-      });
-      setMessage('Изменения успешно сохранены ✓');
+      }, { headers });
+      
+      showMessage('Изменения сохранены', 'success');
     } catch (err: any) {
-      setMessage('Ошибка при сохранении: ' + (err.response?.data?.detail || err.message));
+      showMessage('Ошибка: ' + (err.response?.data?.detail || err.message), 'error');
     } finally {
       setSaving(false);
     }
@@ -73,44 +95,75 @@ const VidicEditPage: React.FC = () => {
     if (!window.confirm('Удалить это Vidic видео навсегда?')) return;
     
     try {
-      await axios.delete(`http://localhost:8000/api/vidic/${id}`);
-      alert('Vidic видео успешно удалено');
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      
+      await axios.delete(`http://localhost:8000/api/vidic/${id}`, { headers });
       navigate('/studio');
     } catch (err) {
       alert('Ошибка при удалении');
     }
   };
 
-  if (loading) return <div className="loading">Загрузка Vidic видео...</div>;
-  if (!video) return <div className="error-container">Vidic видео не найдено</div>;
+  if (loading) {
+    return (
+      <div className="video-edit-page">
+        <div className="edit-loading">
+          <div className="edit-spinner"></div>
+          <p>Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!video) {
+    return (
+      <div className="video-edit-page">
+        <div className="edit-error">
+          <p>Vidic видео не найдено</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="video-edit-page">
       <div className="edit-container">
-        <h1>Редактирование Vidic видео</h1>
+        <div className="edit-header">
+          <h1>Редактирование Vidic видео</h1>
+        </div>
 
-        {message && <div className="edit-message success">{message}</div>}
+        {message && (
+          <div className={`edit-message ${messageType}`}>
+            {message}
+          </div>
+        )}
 
         <div className="edit-content">
-          {/* Основная форма */}
+          {/* Форма */}
           <div className="edit-form">
             <div className="form-group">
-              <label>Название видео</label>
+              <label>Название</label>
               <input
                 type="text"
+                className="form-input"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Название Vidic видео"
+                disabled={saving}
               />
             </div>
 
             <div className="form-group">
               <label>Описание</label>
               <textarea
+                className="form-textarea"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Расскажите о вашем вертикальном видео..."
                 rows={6}
+                disabled={saving}
               />
             </div>
 
@@ -120,34 +173,37 @@ const VidicEditPage: React.FC = () => {
                 {tags.map((tag, index) => (
                   <span key={index} className="tag-chip">
                     {tag}
-                    <button onClick={() => removeTag(tag)}>×</button>
+                    <button className="tag-remove" onClick={() => removeTag(tag)} disabled={saving}>×</button>
                   </span>
                 ))}
                 <input
                   type="text"
+                  className="tag-input"
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                  placeholder="Добавьте тег..."
+                  placeholder="Добавить тег..."
+                  disabled={saving}
                 />
               </div>
+              <span className="tag-hint">Enter для добавления</span>
             </div>
 
             <button onClick={handleSave} disabled={saving} className="save-btn">
-              {saving ? 'Сохранение...' : 'Сохранить изменения'}
+              {saving ? 'Сохранение...' : 'Сохранить'}
             </button>
           </div>
 
-          {/* Боковая панель с информацией и удалением */}
+          {/* Сайдбар */}
           <div className="edit-sidebar">
             <div className="thumbnail-section">
               <h3>Миниатюра</h3>
               {video.thumbnail && (
                 <div className="thumbnail-preview">
-                  <img src={video.thumbnail} alt="Vidic thumbnail" />
+                  <img src={video.thumbnail} alt="Миниатюра" />
                 </div>
               )}
-              <p style={{ fontSize: '13px', color: '#888', marginTop: '8px' }}>
+              <p style={{ fontSize: '13px', color: 'var(--yt-text-secondary)', marginTop: '8px' }}>
                 Миниатюра генерируется автоматически
               </p>
             </div>
@@ -155,8 +211,9 @@ const VidicEditPage: React.FC = () => {
             <div className="danger-section">
               <h3>Опасная зона</h3>
               <p>Это действие нельзя отменить</p>
-              <button onClick={handleDelete} className="delete-btn">
-                🗑 Удалить Vidic видео
+              <button onClick={handleDelete} disabled={saving} className="delete-btn">
+                <DeleteIcon />
+                Удалить видео
               </button>
             </div>
           </div>

@@ -52,7 +52,6 @@ const VidicFeed: React.FC = () => {
     headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
 
-  // Загрузка аватарки
   const fetchAvatar = async (userId: number, type: 'author' | 'comment') => {
     const cache = type === 'author' ? authorAvatars : commentAvatars;
     const setCache = type === 'author' ? setAuthorAvatars : setCommentAvatars;
@@ -69,7 +68,14 @@ const VidicFeed: React.FC = () => {
   useEffect(() => {
     const fetchVideos = async () => {
       try {
-        const response = await api.get('/api/vidic/feed?limit=50');
+        const endpoint = targetVideoId 
+          ? '/api/vidic/feed?limit=50'
+          : token 
+            ? '/api/vidic/recommendations?limit=30' 
+            : '/api/vidic/feed?limit=30';
+            
+        const response = await api.get(endpoint);
+        
         const initialLikes: Record<number, { count: number; liked: boolean }> = {};
         response.data.forEach((video: VidicVideo) => {
           initialLikes[video.id] = { count: video.likes_count || 0, liked: video.is_liked || false };
@@ -78,7 +84,23 @@ const VidicFeed: React.FC = () => {
         
         if (targetVideoId) {
           const targetId = parseInt(targetVideoId);
-          const targetVideo = response.data.find((v: VidicVideo) => v.id === targetId);
+          let targetVideo = response.data.find((v: VidicVideo) => v.id === targetId);
+          
+          // Если видео не нашлось в ленте — загружаем отдельно
+          if (!targetVideo) {
+            try {
+              const res = await api.get(`/api/vidic/${targetId}/info`);
+              targetVideo = {
+                ...res.data,
+                likes_count: 0,
+                is_liked: false,
+                author_avatar: `https://ui-avatars.com/api/?name=${res.data.author}&background=065fd4&color=fff&size=64`
+              };
+            } catch (err) {
+              console.error('Видео не найдено:', err);
+            }
+          }
+          
           const otherVideos = response.data.filter((v: VidicVideo) => v.id !== targetId);
           if (targetVideo) setVideos([targetVideo, ...otherVideos]);
           else setVideos(response.data);
@@ -94,14 +116,12 @@ const VidicFeed: React.FC = () => {
     fetchVideos();
   }, [targetVideoId, token]);
 
-  // Загружаем аватарки авторов
   useEffect(() => {
     videos.forEach(video => {
       if (video.author_id) fetchAvatar(video.author_id, 'author');
     });
   }, [videos]);
 
-  // Загружаем аватарки комментаторов
   useEffect(() => {
     comments.forEach(comment => {
       if (comment.user_id) fetchAvatar(comment.user_id, 'comment');
