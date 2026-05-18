@@ -857,7 +857,6 @@ def get_personal_recommendations(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Персональные рекомендации с пагинацией"""
     
     # 1. История просмотров
     watched = db.query(models.WatchHistory)\
@@ -890,7 +889,6 @@ def get_personal_recommendations(
     # Берём top по тегам, top по авторам, и свежие
     candidate_ids = set()
     
-    # По тегам (если есть)
     if tag_score:
         top_tags = sorted(tag_score, key=tag_score.get, reverse=True)[:5]
         for tag in top_tags:
@@ -1215,10 +1213,8 @@ async def upload_banner(
     contents = await file.read()
     image = Image.open(io.BytesIO(contents))
 
-    # Целевое соотношение 2560 × 1440 → 16:9
-    target_ratio = 2560 / 1440  # ≈ 1.777...
+    target_ratio = 2560 / 1440 
 
-    # Приводим к нужному соотношению с центрированием (можно улучшить crop позже)
     width, height = image.size
     current_ratio = width / height
 
@@ -1233,7 +1229,6 @@ async def upload_banner(
         top = (height - new_height) // 2
         image = image.crop((0, top, width, top + new_height))
 
-    # Финальный ресайз
     image = image.resize((2560, 1440), Image.Resampling.LANCZOS).convert("RGB")
 
     filename = f"user_{current_user.id}.jpg"
@@ -1249,7 +1244,6 @@ async def upload_banner(
         "message": "Шапка канала обновлена",
         "banner_url": f"{settings.MEDIA_URL}/{current_user.banner_path}"
     }
-# ========== УПРАВЛЕНИЕ ИСТОРИЕЙ ПРОСМОТРОВ ==========
 
 @app.delete("/api/me/watch-history")
 def clear_watch_history(
@@ -1280,8 +1274,6 @@ def remove_from_history(
     if deleted > 0:
         return {"message": "Видео удалено из истории"}
     raise HTTPException(status_code=404, detail="Видео не найдено в истории")
-# main.py - добавьте новый эндпоинт
-# main.py
 
 @app.post("/api/upload-vidic")
 async def upload_vidic(
@@ -1292,9 +1284,7 @@ async def upload_vidic(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Отдельный эндпоинт для загрузки вертикальных Vidic видео
-    """
+
     try:
         print(f"\n{'='*60}")
         print(f"📱 VIDIC UPLOAD от {current_user.username}")
@@ -1310,7 +1300,6 @@ async def upload_vidic(
         # 1. Валидация файла
         file_extension = validate_video_file(file)
         
-        # 2. Сохраняем в папку vidic_uploads
         unique_filename = f"vidic_{uuid.uuid4()}{file_extension}"
         file_path = os.path.join("vidic_uploads", unique_filename)
         
@@ -1334,7 +1323,6 @@ async def upload_vidic(
         
         print(f"✅ Видео записано в БД: id={db_video.id}")
         
-        # 4. Запускаем задачу для Vidic
         from celery_app_vidic import process_vidic_task
         process_vidic_task.delay(db_video.id, file_path)
         
@@ -1789,48 +1777,27 @@ def get_vidic_recommendations(
     current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    """Персональные рекомендации Vidic видео"""
     
-    # 1. Собираем данные о предпочтениях
     liked_authors = set()
     liked_tags = {}
-    liked_video_ids = set()  # ← ДОБАВИТЬ
-    watched_ids = set()
+    liked_video_ids = set()
     
     if current_user:
-        # Лайкнутые видео
         liked_videos = db.query(VidicLike).filter(
             VidicLike.user_id == current_user.id
         ).all()
         
         for lv in liked_videos:
-            liked_video_ids.add(lv.video_id)  # ← ДОБАВИТЬ
+            liked_video_ids.add(lv.video_id)
             video = db.query(VidicVideo).filter(VidicVideo.id == lv.video_id).first()
             if video:
                 liked_authors.add(video.author_id)
                 if video.tags:
                     for tag in [t.strip().lower() for t in video.tags.split(',') if t.strip()]:
                         liked_tags[tag] = liked_tags.get(tag, 0) + 1
-        
-        # История просмотров (последние 10)
-        history = db.query(models.WatchHistory)\
-            .filter(models.WatchHistory.user_id == current_user.id)\
-            .order_by(models.WatchHistory.watched_at.desc())\
-            .limit(10)\
-            .all()
-        
-        watched_ids = {h.video_id for h in history}
-        
-        # Авторы из истории
-        for h in history:
-            video = db.query(models.Video).filter(models.Video.id == h.video_id).first()
-            if video:
-                liked_authors.add(video.author_id)
     
-    # Объединяем все исключаемые ID ← ДОБАВИТЬ
-    exclude_ids = liked_video_ids | watched_ids
+    exclude_ids = liked_video_ids
     
-    # 2. Собираем кандидатов
     candidates = []
     seen_vidic_ids = set()
     
@@ -1839,7 +1806,7 @@ def get_vidic_recommendations(
         author_videos = db.query(VidicVideo).filter(
             VidicVideo.author_id == author_id,
             VidicVideo.is_processed == True,
-            ~VidicVideo.id.in_(exclude_ids) if exclude_ids else True  # ← ДОБАВИТЬ
+            ~VidicVideo.id.in_(exclude_ids) if exclude_ids else True 
         ).order_by(VidicVideo.upload_date.desc()).limit(10).all()
         
         for v in author_videos:
@@ -1854,7 +1821,7 @@ def get_vidic_recommendations(
             tag_videos = db.query(VidicVideo).filter(
                 VidicVideo.is_processed == True,
                 VidicVideo.tags.ilike(f"%{tag}%"),
-                ~VidicVideo.id.in_(exclude_ids) if exclude_ids else True  # ← ДОБАВИТЬ
+                ~VidicVideo.id.in_(exclude_ids) if exclude_ids else True 
             ).order_by(VidicVideo.views.desc()).limit(10).all()
             
             for v in tag_videos:
@@ -1866,18 +1833,18 @@ def get_vidic_recommendations(
     if len(candidates) < limit:
         popular = db.query(VidicVideo).filter(
             VidicVideo.is_processed == True,
-            ~VidicVideo.id.in_(exclude_ids | seen_vidic_ids) if exclude_ids else True  # ← ИЗМЕНИТЬ
+            ~VidicVideo.id.in_(exclude_ids | seen_vidic_ids) if exclude_ids else True
         ).order_by(VidicVideo.views.desc()).limit(limit * 2).all()
         candidates.extend(popular)
     
     if len(candidates) < limit:
         fresh = db.query(VidicVideo).filter(
             VidicVideo.is_processed == True,
-            ~VidicVideo.id.in_(exclude_ids | seen_vidic_ids) if exclude_ids else True  # ← ИЗМЕНИТЬ
+            ~VidicVideo.id.in_(exclude_ids | seen_vidic_ids) if exclude_ids else True 
         ).order_by(VidicVideo.upload_date.desc()).limit(limit * 2).all()
         candidates.extend(fresh)
     
-    # 3. Сортируем и формируем ответ
+    # Формируем ответ
     result = []
     seen_ids = set()
     
@@ -1886,7 +1853,6 @@ def get_vidic_recommendations(
             continue
         seen_ids.add(video.id)
         
-        # Считаем score
         score = 0
         if video.author_id in liked_authors:
             score += 3
@@ -1895,11 +1861,10 @@ def get_vidic_recommendations(
             for tag in video_tags:
                 if tag in liked_tags:
                     score += liked_tags[tag]
-        score += min(video.views or 0, 1000) / 1000  # популярность
+        score += min(video.views or 0, 1000) / 1000
         days_ago = (datetime.utcnow() - video.upload_date).days
-        score += max(0, 1 - days_ago / 7) * 2  # новизна (до 7 дней)
+        score += max(0, 1 - days_ago / 7) * 2
         
-        # Формируем URL
         video_url = None
         if video.hls_playlist_path:
             video_url = f"http://localhost:8000/{video.hls_playlist_path.replace(chr(92), '/')}"
@@ -1907,12 +1872,7 @@ def get_vidic_recommendations(
             video_url = f"http://localhost:8000/{video.file_path.replace(chr(92), '/')}"
         
         likes_count = db.query(VidicLike).filter(VidicLike.video_id == video.id).count()
-        is_liked = False
-        if current_user:
-            is_liked = db.query(VidicLike).filter(
-                VidicLike.video_id == video.id,
-                VidicLike.user_id == current_user.id
-            ).first() is not None
+        is_liked = video.id in liked_video_ids if current_user else False
         
         author = video.author
         
@@ -1931,9 +1891,7 @@ def get_vidic_recommendations(
             "score": round(score, 2)
         })
     
-    # Сортируем по score
     result.sort(key=lambda x: x["score"], reverse=True)
-    
     return result[:limit]
 
 @app.get("/api/me/liked-playlist")
@@ -1941,8 +1899,6 @@ def get_liked_playlist(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Получить плейлист 'Понравившиеся' текущего пользователя"""
-    
     playlist = db.query(models.Playlist).filter(
         models.Playlist.author_id == current_user.id,
         models.Playlist.title == "Понравившиеся"
@@ -1968,8 +1924,6 @@ def get_liked_vidic_playlist(
     current_user: models.User = Depends(auth.get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Получить плейлист 'Понравившиеся Vidic'"""
-    
     playlist = db.query(models.Playlist).filter(
         models.Playlist.author_id == current_user.id,
         models.Playlist.title == "Понравившиеся Vidic"
@@ -1978,7 +1932,6 @@ def get_liked_vidic_playlist(
     if not playlist:
         return {"playlist": None, "videos": []}
     
-    # Получаем Vidic видео через PlaylistVidicVideo
     pvs = db.query(models.PlaylistVidicVideo).filter(
         models.PlaylistVidicVideo.playlist_id == playlist.id
     ).order_by(models.PlaylistVidicVideo.position.desc()).all()
@@ -2027,7 +1980,7 @@ def delete_playlist(
     if not playlist:
         raise HTTPException(403, "Нет доступа")
     
-    # 🔥 Защита от удаления системных плейлистов
+    # Защита от удаления системных плейлистов
     if playlist.title in ["Понравившиеся", "Понравившиеся Vidic"]:
         raise HTTPException(400, "Нельзя удалить системный плейлист")
     
