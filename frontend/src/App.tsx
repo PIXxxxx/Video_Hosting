@@ -17,7 +17,7 @@ import VidicUploadForm from './components/VidicUploadForm';
 import VidicPage from './pages/VidicFeed';
 import CreatorStudio from './pages/CreatorStudio';
 import VidicEditPage from './pages/VidicEditPage';
-
+import VidicPlaylistPage from './pages/VidicPlaylistPage';
 import { AuthProvider } from './context/AuthContext';
 import './App.css';
 
@@ -44,6 +44,7 @@ function App() {
               <Route path="/upload/vidic" element={<PrivateRoute><VidicUploadForm /></PrivateRoute>} />
               <Route path="/studio" element={<PrivateRoute><CreatorStudio /></PrivateRoute>} />
               <Route path="/vidic/:id/edit" element={<PrivateRoute><VidicEditPage /></PrivateRoute>} />
+              <Route path="/liked-vidic" element={<VidicPlaylistPage />} />
             </Routes>
           </main>
         </div>

@@ -37,6 +37,8 @@ interface Playlist {
   description?: string;
   is_private: boolean;
   videos_count: number;
+  thumbnail?: string;
+  is_vidic?: boolean;
 }
 
 interface VidicVideo {
@@ -100,23 +102,48 @@ const ChannelPage: React.FC = () => {
   const [showAvatarCrop, setShowAvatarCrop] = useState(false);
   const [showBannerCrop, setShowBannerCrop] = useState(false);
   const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
-
+  const [videoPage, setVideoPage] = useState(1);
+  const [hasMoreVideos, setHasMoreVideos] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const VIDEOS_PER_PAGE = 12;
   const api = axios.create({
     baseURL: 'http://localhost:8000',
     headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
 
-  const fetchChannel = async () => {
+  const fetchChannel = async (page: number = 1, append: boolean = false) => {
     try {
-      const res = await axios.get(`http://localhost:8000/api/channel/${id}`);
-      setChannel(res.data);
+      if (page === 1) setLoading(true);
+      else setLoadingMore(true);
+      
+      const res = await axios.get(`http://localhost:8000/api/channel/${id}`, {
+        params: { page, limit: VIDEOS_PER_PAGE }
+      });
+      
+      const data = res.data;
+      setChannel(prev => {
+        if (append && prev) {
+          return { ...data, videos: [...prev.videos, ...data.videos] };
+        }
+        return data;
+      });
+      
+      setHasMoreVideos(data.videos.length >= VIDEOS_PER_PAGE);
     } catch (err: any) {
       console.error('Ошибка загрузки канала:', err);
-      setError(err.response?.data?.detail || 'Не удалось загрузить канал');
+      if (!append) setError(err.response?.data?.detail || 'Не удалось загрузить канал');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
+
+// Загрузка ещё
+const loadMoreVideos = () => {
+  const nextPage = videoPage + 1;
+  setVideoPage(nextPage);
+  fetchChannel(nextPage, true);
+};
 
   const fetchVidicVideos = async () => {
     setLoadingVidic(true);
@@ -141,22 +168,6 @@ const ChannelPage: React.FC = () => {
     }
   }, [activeTab, id]);
 
-  useEffect(() => {
-    if (activeTab !== 'playlists' || !token || !currentUser || Number(id) !== currentUser.id) {
-      return;
-    }
-
-    const fetchPlaylists = async () => {
-      try {
-        const res = await api.get('/api/playlists/me');
-        setPlaylists(res.data);
-      } catch (err) {
-        console.error('Ошибка загрузки плейлистов:', err);
-      }
-    };
-
-    fetchPlaylists();
-  }, [activeTab, token, currentUser, id]);
 
   const isOwnChannel = currentUser?.id === Number(id);
 
@@ -189,6 +200,44 @@ const ChannelPage: React.FC = () => {
       alert('Ошибка при загрузке: ' + (err.response?.data?.detail || err.message));
     }
   };
+  useEffect(() => {
+  if (activeTab !== 'playlists' || !id) return;
+
+  const fetchPlaylists = async () => {
+    try {
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      
+      const res = await axios.get(`http://localhost:8000/api/playlists/user/${id}`, { headers });
+      let allPlaylists = res.data || [];
+      
+      // 🔥 Если это свой канал — добавляем плейлист "Понравившиеся Vidic"
+      if (isOwnChannel) {
+        try {
+          const vidicRes = await axios.get('http://localhost:8000/api/me/liked-vidic-playlist', { headers });
+          if (vidicRes.data.playlist) {
+            allPlaylists.push({
+              ...vidicRes.data.playlist,
+              is_vidic: true,  // ← флаг что это Vidic плейлист
+              thumbnail: null,
+              author: currentUser?.username || '',
+              author_id: currentUser?.id || 0
+            });
+          }
+        } catch (err) {
+          console.error('Ошибка загрузки Vidic плейлиста:', err);
+        }
+      }
+      
+      setPlaylists(allPlaylists);
+    } catch (err) {
+      console.error('Ошибка загрузки плейлистов:', err);
+      setPlaylists([]);
+    }
+  };
+
+  fetchPlaylists();
+}, [activeTab, token, id, isOwnChannel]);
 
   const formatViews = (views: number) => {
     if (views >= 1000000) return `${(views / 1000000).toFixed(1)} млн`;
@@ -257,24 +306,22 @@ const ChannelPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Вкладки */}
-      <div className="channel-tabs">
-        <button className={`tab ${activeTab === 'videos' ? 'active' : ''}`} onClick={() => setActiveTab('videos')}>
-          Видео
-        </button>
+          {/* Вкладки */}
+    <div className="channel-tabs">
+      <button className={`tab ${activeTab === 'videos' ? 'active' : ''}`} onClick={() => setActiveTab('videos')}>
+        Видео
+      </button>
 
-        {isOwnChannel && (
-          <button className={`tab ${activeTab === 'playlists' ? 'active' : ''}`} onClick={() => setActiveTab('playlists')}>
-            Плейлисты
-          </button>
-        )}
+      {/* Плейлисты видны всем, но приватные фильтруются */}
+      <button className={`tab ${activeTab === 'playlists' ? 'active' : ''}`} onClick={() => setActiveTab('playlists')}>
+        Плейлисты
+      </button>
 
-        {isOwnChannel && (
-          <button className={`tab ${activeTab === 'vidic' ? 'active' : ''}`} onClick={() => setActiveTab('vidic')}>
-            Vidic
-          </button>
-        )}
-      </div>
+      {/* Vidic видны всем */}
+      <button className={`tab ${activeTab === 'vidic' ? 'active' : ''}`} onClick={() => setActiveTab('vidic')}>
+        Vidic
+      </button>
+    </div>
 
       {/* Контент */}
       <section className="channel-content">
@@ -285,22 +332,36 @@ const ChannelPage: React.FC = () => {
               <p>На канале пока нет видео</p>
             </div>
           ) : (
-            <div className="video-grid">
-              {channel.videos.map((video) => (
-                <VideoCard
-                  key={video.id}
-                  id={video.id}
-                  title={video.title}
-                  views={video.views}
-                  upload_date={video.upload_date}
-                  author_id={video.author_id}
-                  author={video.author}
-                  file_path={video.file_path}
-                  enableHoverPreview={true}
-                  thumbnail={video.thumbnail}
-                />
-              ))}
-            </div>
+            <>
+              <div className="video-grid">
+                {channel.videos.map((video) => (
+                  <VideoCard
+                    key={video.id}
+                    id={video.id}
+                    title={video.title}
+                    views={video.views}
+                    upload_date={video.upload_date}
+                    author_id={video.author_id}
+                    author={video.author}
+                    file_path={video.file_path}
+                    enableHoverPreview={true}
+                    thumbnail={video.thumbnail}
+                  />
+                ))}
+              </div>
+              
+              {hasMoreVideos && (
+                <div className="load-more-container">
+                  {loadingMore ? (
+                    <div className="loader"></div>
+                  ) : (
+                    <button className="load-more-btn" onClick={loadMoreVideos}>
+                      Показать ещё
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )
         )}
 
@@ -316,14 +377,23 @@ const ChannelPage: React.FC = () => {
             ) : (
               <div className="playlists-grid">
                 {playlists.map((playlist) => (
-                  <Link key={playlist.id} to={`/playlist/${playlist.id}`} className="playlist-card">
+                  <Link 
+                    key={playlist.id} 
+                    to={playlist.is_vidic ? '/liked-vidic' : `/playlist/${playlist.id}`} 
+                    className="playlist-card"
+                  >
                     <div className="playlist-thumbnail">
-                      <PlaylistIcon />
+                      {playlist.thumbnail ? (
+                        <img src={playlist.thumbnail} alt={playlist.title} />
+                      ) : (
+                        <PlaylistIcon />
+                      )}
                       <span className="playlist-count">{playlist.videos_count}</span>
                     </div>
                     <div className="playlist-info">
                       <h3>{playlist.title}</h3>
                       <p>{playlist.videos_count} видео</p>
+                      
                       {playlist.is_private && (
                         <span className="private-badge">
                           <LockIcon />
@@ -396,3 +466,4 @@ const ChannelPage: React.FC = () => {
 };
 
 export default ChannelPage;
+
